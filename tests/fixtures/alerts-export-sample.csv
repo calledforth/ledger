@@ -1,0 +1,14 @@
+datetime_ist,event_type,direction,amount,currency,channel,vendor_raw,account_or_card_last4,reference,gmail_message_id,subject,flag_unknown_vendor,flag_personal_payee,note
+2026-09-01 18:48 (email time),transaction,credit,1000.50,INR,NEFT,NEFT Cr-CITI0100000-WISE PAYMENTS IPL-Example-CITIN26725024631,1111,CITIN26725024631,ex-1,subject,false,false,NEFT inward
+2026-09-02 10:32 (email time),transaction,debit,1147.0,INR,UPI,Example Health Pvt Ltd | examplehealth.rzp@rxairtel,1111,128889292451,ex-2,subject,false,false,
+2026-09-03 08:27 (email time),transaction,debit,150.0,INR,UPI,A FRIEND | 9999999999@axl,1111,661223470533,ex-3,subject,false,true,Transfer to an individual
+2026-09-03 18:10 (email time),transaction,debit,5000.0,INR,NetBanking fund transfer to broker,HSL Sec (HDFC Securities) trading A/c 1234567-...0000,1111,,ex-4,subject,false,false,investment
+2026-09-10 12:39,transaction,debit,1000.00,INR,card (international/e-commerce),EXAMPLETOOL.COM,2222,,ex-5,subject,false,false,
+2026-09-10 12:41,mandate_registered,,0.0,USD,auto-debit mandate,ExampleTool,2222,SI Hub ID AAA,ex-6,subject,false,false,"info only. Max USD 12.00, frequency monthly, start 10/09/2026, end 10/09/2046"
+2026-09-12 13:07,autopay_declined,,70.8,USD,auto-debit mandate,OtherTool,2222,SI Hub ID BBB,ex-7,subject,false,false,"info only, charge was declined"
+2026-09-12 13:34,mandate_registered,,0.0,USD,auto-debit mandate,OtherTool,2222,SI Hub ID CCC,ex-8,subject,false,false,"Max USD 23.60, frequency monthly, start 12/09/2026"
+2026-09-12 17:35,transaction,debit,2000.00,INR,card (international/e-commerce),OTHERTOOL IDE,2222,,ex-9,subject,false,false,
+2026-09-13 09:43,mandate_cancelled,,,,auto-debit mandate,OtherTool,2222,SI Hub ID CCC,ex-10,subject,false,false,"info only, mandate cancelled"
+2026-09-15 20:30 (email time),transaction,credit,2010.00,INR,card refund (POS),CRV POS 526099******2222 OTHERTOOL IDE,1111,,ex-11,subject,false,false,refund
+2026-09-16 15:52,mandate_registered,,0.0,USD,auto-debit mandate,OtherTool,2222,SI Hub ID DDD,ex-12,subject,false,false,"Max USD 23.60, frequency monthly, start 16/09/2026"
+2026-10-10 13:21,upcoming_mandate,,1999.0,INR,auto-debit mandate,ExampleAI LLC,2222,SI Hub ID EEE,ex-13,subject,false,false,"info only, upcoming debit on 11/10/2026"
