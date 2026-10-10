@@ -1,0 +1,14 @@
+date,time,direction,amount,currency,channel,vendor_raw,card_last4,reference,gmail_message_id,flag_unknown_vendor,note
+2026-09-01,09:00,mandate_registered,1500,INR,auto-debit,AIRTEL BROADBAND,,MDT-AIR-1,g-m1,,e-mandate registered max 1500 monthly
+2026-09-02,10:15,debit,486.00,INR,UPI,SWIGGY,,UPI111,g-t1,false,
+2026-09-03,18:40,credit,124500.00,INR,NEFT,WISE PAYMENTS LTD,,NEFT222,g-t2,,
+2026-09-05,08:00,mandate_upcoming,999,INR,auto-debit,AIRTEL BROADBAND,,MDT-AIR-1,g-m2,,Upcoming debit on 2026-09-07
+2026-09-07,07:30,debit,999.00,INR,auto-debit,AIRTEL BROADBAND,,ACH333,g-t3,,
+2026-09-10,22:05,debit,100.00,USD,card,ANTHROPIC,4111 1111 1111 4242,,g-t4,,
+2026-09-12,13:00,debit,350,INR,UPI,UPI-PAYTMQR-XYZ,,UPI444,g-t5,yes,
+2026-09-20,9:15 PM,DR,"2,399.00",INR,Debit Card,AMAZON PAY INDIA,1234,,g-t6,,
+2026-09-30,23:30,debit,120,INR,UPI,CHAI POINT,,UPI555,g-t7,,
+2026-10-01,09:00,mandate,0,INR,,AIRTEL BROADBAND,,MDT-AIR-1,g-m3,,mandate_upcoming notice for 2026-10-07
+2026-10-04,09:00,mandate_declined,999,INR,auto-debit,AIRTEL BROADBAND,,MDT-AIR-1,g-m4,,auto-debit failed: insufficient balance
+2026-10-05,10:00,,0,INR,,AIRTEL BROADBAND,,MDT-AIR-1,g-m5,,e-mandate cancelled by customer
+2026-10-06,10:00,refund,50,INR,UPI,SOMEONE,,,g-bad,,
