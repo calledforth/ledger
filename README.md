@@ -14,9 +14,9 @@ functions, and it exposes `ON CONFLICT ... WHERE` for the partial unique indexes
 
 One page, two views, behind a password login:
 
-- **This month** (default, IST): a card per currency with "spent so far", a bar splitting subscriptions from one-time
-  purchases, a cumulative-spend line, what was received and via what (e.g. Wise over NEFT), and refunds that were left
-  out. Below it, the month's charges and credits as a **list** or a **calendar** (vendor logos per day). Rows needing
+- **This month** (default, IST): one spending card with an INR / USD switch: "spent so far", a strip of
+  monthly bars (12 months; click one to open that month), a bar splitting subscriptions from one-time purchases, what
+  was received and via what (e.g. Wise over NEFT), and refunds and transfers that were left out. Below it, the month's charges and credits as a **list** or a **calendar** (vendor logos per day). Rows needing
   review are tinted, refunded rows are struck through, credits are green. Click any row to edit vendor, category or
   notes, resolve the review, mark it refunded, or save the vendor as an alias for that payee.
 - **Upcoming** (right rail): expected payments for the next 30 days grouped by week with per-currency weekly totals,

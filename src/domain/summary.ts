@@ -3,7 +3,7 @@ import type { Db } from "@/db/client";
 import { charges, monthNotes } from "@/db/schema";
 import { DomainError } from "./errors";
 import { addMoney, fromMinor, toMinor } from "./money";
-import { assertMonth, currentMonthIst, istParts, monthRangeIst } from "@/lib/time";
+import { assertMonth, currentMonthIst, istParts, monthRangeIst, shiftMonth } from "@/lib/time";
 
 type CurrencySummary = {
   currency: string;
@@ -144,6 +144,34 @@ export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
     currencies,
     note: note?.note ?? null,
   };
+}
+
+/**
+ * Spending per IST month and currency for `from`..`to` (inclusive), with the same rules as getMonthSummary: refunded
+ * debits, transfer:* debits and credits are left out. Every month in the range is returned, empty ones as {}.
+ */
+export async function monthlySpending(db: Db, input: { from: string; to: string }) {
+  try {
+    assertMonth(input.from);
+    assertMonth(input.to);
+  } catch (e) {
+    throw new DomainError("invalid_input", (e as Error).message);
+  }
+  if (input.from > input.to) throw new DomainError("invalid_input", "from must not be after to");
+  const rows = await db
+    .select({ chargedAt: charges.chargedAt, amount: charges.amount, currency: charges.currency, category: charges.category })
+    .from(charges)
+    .where(and(eq(charges.direction, "debit"), eq(charges.isRefunded, false), gte(charges.chargedAt, monthRangeIst(input.from).start), lt(charges.chargedAt, monthRangeIst(input.to).end)));
+  const out = new Map<string, Map<string, bigint>>();
+  for (let m = input.from; m <= input.to; m = shiftMonth(m, 1)) out.set(m, new Map());
+  for (const r of rows) {
+    if (isTransfer(r.category)) continue;
+    const p = istParts(r.chargedAt);
+    const per = out.get(`${p.year}-${String(p.month).padStart(2, "0")}`);
+    if (!per) continue;
+    per.set(r.currency, (per.get(r.currency) ?? 0n) + toMinor(r.amount));
+  }
+  return [...out.entries()].map(([month, per]) => ({ month, spent: Object.fromEntries([...per.entries()].map(([c, v]) => [c, fromMinor(v)])) as Record<string, string> }));
 }
 
 export async function setMonthNote(db: Db, input: { month: string; note: string }) {

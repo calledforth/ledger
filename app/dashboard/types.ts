@@ -87,4 +87,6 @@ export type MonthData = {
   dues: DueMark[];
   weeks: UpWeek[] | null;
   subs: SubCard[];
+  /** Spending per month for the card's month strip (12 months around the visible one). */
+  history: { month: string; spent: Record<string, string> }[];
 };

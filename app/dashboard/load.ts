@@ -3,11 +3,11 @@ import { getDb } from "@/db/client";
 import { listCharges } from "@/domain/charges";
 import { addMoney } from "@/domain/money";
 import { listSubscriptions } from "@/domain/subscriptions";
-import { getMonthSummary } from "@/domain/summary";
+import { getMonthSummary, monthlySpending } from "@/domain/summary";
 import { upcomingPayments, type UpcomingItem } from "@/domain/upcoming";
 import { dayLabel, formatMoney, shortDate, timeIst } from "@/lib/format";
 import { vendorIcon } from "@/lib/icons";
-import { addDays, daysInMonth, istDate, todayIst } from "@/lib/time";
+import { addDays, daysInMonth, istDate, shiftMonth, todayIst } from "@/lib/time";
 import type { ChargeRow, ExpectedData, MonthData, SubCard, UpWeek } from "./types";
 
 export const isMonth = (m: string | null | undefined): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
@@ -23,6 +23,17 @@ function upItemDetail(it: UpcomingItem) {
   return it.mandate ? `${it.cycle} · auto-debit` : (it.cycle ?? "");
 }
 
+/**
+ * The 12 months the spending card's bar strip shows: through next month, so the strip stays put while you move around
+ * recent months, and slides only when you go further back or forward than it reaches.
+ */
+export function historyWindow(month: string, current: string): { from: string; to: string } {
+  let to = shiftMonth(current, 1);
+  if (month > to) to = month;
+  if (month < shiftMonth(to, -11)) to = shiftMonth(month, 6);
+  return { from: shiftMonth(to, -11), to };
+}
+
 /** Loads and shapes one month for the dashboard. Used by the page (first paint) and /api/month (client switches). */
 export async function loadMonth(month: string): Promise<MonthData> {
   const today = todayIst();
@@ -31,14 +42,16 @@ export async function loadMonth(month: string): Promise<MonthData> {
   const isPast = month < current;
   const lastDay = `${month}-${String(daysInMonth(month)).padStart(2, "0")}`;
   const db = getDb();
+  const hist = historyWindow(month, current);
 
-  const [summary, chargePage, upcoming, monthDues, subs] = await Promise.all([
+  const [summary, chargePage, upcoming, monthDues, subs, history] = await Promise.all([
     getMonthSummary(db, { month }),
     listCharges(db, { month, limit: 500 }),
     isPast ? null : upcomingPayments(db, isFuture ? { from: `${month}-01`, to: lastDay } : { from: today, days: 30 }),
     // Dues for the rest of the visible month, shown on calendar days after today.
     isPast ? null : upcomingPayments(db, { from: isFuture ? `${month}-01` : addDays(today, 1), to: lastDay }),
     listSubscriptions(db, { status: "active" }),
+    monthlySpending(db, hist),
   ]);
 
   const subName = new Map(subs.subscriptions.map((s) => [s.id, `${s.plan} · subscription`]));
@@ -152,5 +165,6 @@ export async function loadMonth(month: string): Promise<MonthData> {
     dues: (monthDues?.weeks.flatMap((w) => w.items) ?? []).map((u) => ({ date: u.date, vendor: u.vendor, icon: vendorIcon(u.vendor) })),
     weeks,
     subs: subCards,
+    history,
   };
 }

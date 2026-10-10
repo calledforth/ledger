@@ -1,23 +1,45 @@
 import { daysInMonth } from "@/lib/time";
 
-const Bar = ({ w, h = 12, r }: { w: string | number; h?: number; r?: number }) => <span className="sk" style={{ width: w, height: h, borderRadius: r }} />;
+export const Bar = ({ w, h = 12, r }: { w: string | number; h?: number; r?: number }) => (
+  <span className="sk" style={{ width: w, height: h, borderRadius: r }} />
+);
 
-export function SummarySkeleton({ cards = 2 }: { cards?: number }) {
+export function SummarySkeleton() {
   return (
-    <div className="summary" aria-busy="true" aria-label="Loading summary">
-      {Array.from({ length: cards }, (_, i) => (
-        <div className="card" key={i}>
-          <Bar w={120} h={11} />
-          <Bar w={160} h={34} r={8} />
-          <Bar w="100%" h={8} r={99} />
-          <div style={{ display: "flex", gap: 14 }}>
-            <Bar w={110} h={11} />
-            <Bar w={100} h={11} />
-          </div>
-          <Bar w="100%" h={56} r={10} />
-          <Bar w="70%" h={11} />
+    <div className="card spend" aria-busy="true" aria-label="Loading spending">
+      <div className="card-top">
+        <Bar w={140} h={12} />
+        <Bar w={130} h={30} r={10} />
+      </div>
+      <div className="spend-body">
+        <div className="big-row">
+          <Bar w={180} h={36} r={8} />
         </div>
-      ))}
+        <div className="mstrip">
+          {Array.from({ length: 12 }, (_, i) => (
+            <span className="mbar" key={i}>
+              <span className="col">
+                <span className="sk" style={{ height: `${20 + ((i * 37) % 70)}%`, width: "100%", borderRadius: 6 }} />
+              </span>
+              <Bar w={22} h={9} />
+            </span>
+          ))}
+        </div>
+        <SpendRestSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function SpendRestSkeleton() {
+  return (
+    <div className="spend-rest">
+      <Bar w="100%" h={6} r={99} />
+      <div style={{ display: "flex", gap: 14 }}>
+        <Bar w={120} h={11} />
+        <Bar w={110} h={11} />
+      </div>
+      <Bar w="60%" h={11} />
     </div>
   );
 }

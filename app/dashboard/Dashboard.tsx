@@ -6,7 +6,7 @@ import { logout } from "../login/actions";
 import { ChargeList } from "../components/ChargeList";
 import { MonthCalendar } from "../components/MonthCalendar";
 import { CalendarSkeleton, ListSkeleton, RailSkeleton, SummarySkeleton } from "../components/Skeletons";
-import { ExpectedCard, SummaryCard } from "../components/SummaryCard";
+import { SpendCard } from "../components/SpendCard";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { UpcomingRail } from "../components/UpcomingRail";
 import { dayLabel, monthLabel } from "@/lib/format";
@@ -16,6 +16,8 @@ import type { MonthData } from "./types";
 type View = "list" | "cal";
 
 const shortMonth = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-IN", { month: "short", year: "numeric", timeZone: "UTC" });
+
+const orderCurrencies = (cs: string[]) => [...new Set(cs)].sort((a, b) => (a === "INR" ? -1 : b === "INR" ? 1 : a.localeCompare(b)));
 
 /** Cached months older than this are shown at once and refreshed in the background. */
 const STALE_MS = 30_000;
@@ -34,6 +36,19 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
   const [month, setMonth] = useState(initial.month);
   const [view, setView] = useState<View>(initialView);
   const [day, setDay] = useState<number | null>(initialDay);
+  const [cur, setCur] = useState("INR");
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem("ledger.currency");
+      if (c) setCur(c);
+    } catch {}
+  }, []);
+  const pickCurrency = (c: string) => {
+    setCur(c);
+    try {
+      localStorage.setItem("ledger.currency", c);
+    } catch {}
+  };
   const [failed, setFailed] = useState<string | null>(null);
   const [fetching, setFetching] = useState<Set<string>>(() => new Set());
 
@@ -148,6 +163,21 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
   const reviewCount = data?.review_count ?? 0;
   const busy = fetching.has(month);
 
+  // While a month loads, the card keeps the last month strip if it covers that month, so only the figures shimmer.
+  const lastShown = useRef<MonthData | null>(null);
+  if (data) lastShown.current = data;
+  const cardData = data ?? (lastShown.current?.history.some((h) => h.month === month) ? lastShown.current : null);
+
+  // Every currency seen this month or in the strip, INR first; the pick sticks across months when it can.
+  const currencies = cardData
+    ? orderCurrencies([
+        ...(data?.summary.map((c) => c.currency) ?? []),
+        ...(data?.expected.map((e) => e.currency) ?? []),
+        ...cardData.history.flatMap((h) => Object.keys(h.spent)),
+      ])
+    : [];
+  const shownCur = currencies.includes(cur) ? cur : (currencies[0] ?? "INR");
+
   const rows = data?.rows ?? [];
   const listRows = day ? rows.filter((r) => Number(r.date.slice(8)) === day) : rows;
 
@@ -194,7 +224,14 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
       {failed === month && !data ? (
         <div className="empty error-box">
           <p>Couldn&apos;t load {monthLabel(month)}.</p>
-          <button type="button" className="btn" onClick={() => { setFailed(null); load(month); }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setFailed(null);
+              load(month);
+            }}
+          >
             <RotateCw size={15} /> Try again
           </button>
         </div>
@@ -209,28 +246,33 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
             </p>
           )}
 
-          {!data ? (
+          {!cardData ? (
             <SummarySkeleton />
-          ) : isFuture ? (
-            <div className="summary">
-              {data.expected.map((e) => (
-                <ExpectedCard key={e.currency} {...e} />
-              ))}
-              {data.expected.length === 0 && <div className="empty">Nothing is expected in {monthLabel(month)} yet.</div>}
-            </div>
           ) : (
-            <div className="summary">
-              {data.summary.map((c) => (
-                <SummaryCard key={c.currency} d={c} todayDay={isCurrent ? Number(today.slice(8)) : null} past={isPast} />
-              ))}
-              {data.summary.length === 0 && <div className="empty">Nothing recorded for {monthLabel(month)} yet. Rows appear here as Ma boi adds them.</div>}
-            </div>
+            <SpendCard
+              loading={!data}
+              d={data?.summary.find((c) => c.currency === shownCur) ?? null}
+              expected={data?.expected.find((e) => e.currency === shownCur) ?? null}
+              currencies={currencies}
+              currency={shownCur}
+              onCurrency={pickCurrency}
+              history={cardData.history}
+              month={month}
+              current={current}
+              onPick={goMonth}
+            />
           )}
 
           <div className={`cols${isPast || isFuture ? " single" : ""}`}>
             {isFuture ? (
               data ? (
-                <UpcomingRail weeks={data.weeks} subs={data.subs} today={today} title={`Due in ${monthLabel(month)}`} emptyText="No payments expected this month." />
+                <UpcomingRail
+                  weeks={data.weeks}
+                  subs={data.subs}
+                  today={today}
+                  title={`Due in ${monthLabel(month)}`}
+                  emptyText="No payments expected this month."
+                />
               ) : (
                 <RailSkeleton />
               )
@@ -255,7 +297,9 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
                   )
                 ) : (
                   <>
-                    {view === "cal" && <MonthCalendar month={month} today={today} rows={rows} dues={data.dues} selected={day} onPick={(d) => pickDay(day === d ? null : d)} />}
+                    {view === "cal" && (
+                      <MonthCalendar month={month} today={today} rows={rows} dues={data.dues} selected={day} onPick={(d) => pickDay(day === d ? null : d)} />
+                    )}
                     {day && (
                       <button type="button" className="pill" onClick={() => pickDay(null)} style={{ justifySelf: "start" }}>
                         Show whole month
