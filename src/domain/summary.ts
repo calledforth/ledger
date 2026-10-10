@@ -17,6 +17,9 @@ type CurrencySummary = {
   credits: string;
   /** Refunded debits (excluded from spent). */
   refunded: string;
+  /** Debits categorised transfer:* (to your investment account, to family/friends), excluded from spent. */
+  transfers: string;
+  transfers_by_category: { category: string; amount: string }[];
   debit_count: number;
   credit_count: number;
   top_vendors: { vendor: string; amount: string; count: number }[];
@@ -27,10 +30,17 @@ type CurrencySummary = {
 };
 
 /**
+ * Money moved rather than spent (category transfer:*, e.g. transfer:investment for your own broker account,
+ * transfer:people for family and friends) is reported separately, not as spending.
+ */
+export const isTransfer = (category: string | null | undefined) => !!category && category.toLowerCase().startsWith("transfer:");
+
+/**
  * Month summary with the business rules applied:
  * - every figure is per currency, never combined;
  * - refunded debits are excluded from spending, and refund credits (refund_of_charge_id set) from credits;
- * - credits are never part of spending.
+ * - credits are never part of spending;
+ * - debits with a transfer:* category (own investment/savings accounts) are reported separately, not as spending.
  */
 export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
   const month = input.month ?? currentMonthIst();
@@ -43,14 +53,14 @@ export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
   const rows = await db.select().from(charges).where(and(gte(charges.chargedAt, start), lt(charges.chargedAt, end)));
   const [note] = await db.select().from(monthNotes).where(eq(monthNotes.month, month));
 
-  const per = new Map<string, CurrencySummary & { _v: Map<string, { a: bigint; n: number }>; _c: Map<string, bigint>; _s: Map<string, { vendor: string; channel: string | null; a: bigint; n: number }>; _d: Map<number, bigint> }>();
+  const per = new Map<string, CurrencySummary & { _v: Map<string, { a: bigint; n: number }>; _c: Map<string, bigint>; _s: Map<string, { vendor: string; channel: string | null; a: bigint; n: number }>; _d: Map<number, bigint>; _t: Map<string, bigint> }>();
   const get = (c: string) => {
     let s = per.get(c);
     if (!s) {
       s = {
-        currency: c, spent: "0.00", subscriptions: "0.00", one_time: "0.00", credits: "0.00", refunded: "0.00",
+        currency: c, spent: "0.00", subscriptions: "0.00", one_time: "0.00", credits: "0.00", refunded: "0.00", transfers: "0.00", transfers_by_category: [],
         debit_count: 0, credit_count: 0, top_vendors: [], by_category: [], credits_by_source: [], daily: [],
-        _v: new Map(), _c: new Map(), _s: new Map(), _d: new Map(),
+        _v: new Map(), _c: new Map(), _s: new Map(), _d: new Map(), _t: new Map(),
       };
       per.set(c, s);
     }
@@ -67,6 +77,12 @@ export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
       if (r.isRefunded) {
         refundedCount++;
         s.refunded = addMoney(s.refunded, r.amount);
+        continue;
+      }
+      if (isTransfer(r.category)) {
+        s.transfers = addMoney(s.transfers, r.amount);
+        const k = r.category!.toLowerCase();
+        s._t.set(k, (s._t.get(k) ?? 0n) + toMinor(r.amount));
         continue;
       }
       s.spent = addMoney(s.spent, r.amount);
@@ -96,7 +112,7 @@ export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
   const [y, m] = month.split("-").map(Number);
   const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const currencies = [...per.values()]
-    .map(({ _v, _c, _s, _d, ...s }) => {
+    .map(({ _v, _c, _s, _d, _t, ...s }) => {
       let cum = 0n;
       const daily = Array.from({ length: days }, (_, i) => {
         const a = _d.get(i + 1) ?? 0n;
@@ -109,6 +125,7 @@ export async function getMonthSummary(db: Db, input: { month?: string } = {}) {
         by_category: [..._c.entries()].sort((a, b) => Number(b[1] - a[1])).map(([category, a]) => ({ category, amount: fromMinor(a) })),
         credits_by_source: [..._s.values()].sort((a, b) => Number(b.a - a.a)).map((x) => ({ vendor: x.vendor, channel: x.channel, amount: fromMinor(x.a), count: x.n })),
         daily,
+        transfers_by_category: [..._t.entries()].sort((a, b) => Number(b[1] - a[1])).map(([category, a]) => ({ category, amount: fromMinor(a) })),
       };
     })
     .sort((a, b) => (a.currency === "INR" ? -1 : b.currency === "INR" ? 1 : a.currency.localeCompare(b.currency)));

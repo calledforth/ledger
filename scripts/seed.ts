@@ -32,6 +32,16 @@ const ALIASES: { raw_pattern: string; canonical_vendor: string; category?: strin
   { raw_pattern: "amazon", canonical_vendor: "Amazon", category: "shopping" },
   { raw_pattern: "airtel", canonical_vendor: "Airtel", category: "utilities" },
   { raw_pattern: "jio", canonical_vendor: "Jio", category: "utilities" },
+  { raw_pattern: "openai", canonical_vendor: "OpenAI", category: "software" },
+  { raw_pattern: "mobbin", canonical_vendor: "Mobbin", category: "software" },
+  { raw_pattern: "1password", canonical_vendor: "1Password", category: "software" },
+  { raw_pattern: "linear", canonical_vendor: "Linear", category: "software" },
+  { raw_pattern: "wispr", canonical_vendor: "Wispr", category: "software" },
+  { raw_pattern: "twitter", canonical_vendor: "X", category: "software" },
+  { raw_pattern: "x corp", canonical_vendor: "X", category: "software" },
+  { raw_pattern: "fancode", canonical_vendor: "FanCode", category: "entertainment" },
+  // Money moved to your own investment account: listed, but not counted as spending.
+  { raw_pattern: "hsl sec", canonical_vendor: "HDFC Securities", category: "transfer:investment" },
 ];
 
 async function seedAliases() {

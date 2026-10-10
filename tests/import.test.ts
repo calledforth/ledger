@@ -5,6 +5,7 @@ import { charges, subscriptions, upcomingEvents } from "@/db/schema";
 import { listCharges } from "@/domain/charges";
 import { classifyRow, importCsv } from "@/domain/importCsv";
 import { upsertVendorAlias } from "@/domain/aliases";
+import { getMonthSummary } from "@/domain/summary";
 import { db } from "./helpers";
 
 const csv = readFileSync(new URL("./fixtures/backfill-sample.csv", import.meta.url), "utf8");
@@ -87,5 +88,67 @@ describe("CSV import", () => {
     expect(classifyRow("debit", "paid via e-mandate")).toEqual({ kind: "debit" });
     expect(classifyRow("debit", "mandate_upcoming for 12 Oct")).toEqual({ kind: "mandate", type: "upcoming" });
     expect(classifyRow("CR", "")).toEqual({ kind: "credit" });
+  });
+});
+
+describe("CSV import: alert export format (datetime_ist, event_type)", () => {
+  const exportCsv = readFileSync(new URL("./fixtures/alerts-export-sample.csv", import.meta.url), "utf8");
+  const exp = { transactions: 7, mandate: 6 };
+
+  it("maps the export columns, mandates, refunds and transfers", async () => {
+    for (const a of [
+      { raw_pattern: "wise", canonical_vendor: "Wise", category: "income:freelance" },
+      { raw_pattern: "airtel", canonical_vendor: "Airtel" },
+      { raw_pattern: "hsl sec", canonical_vendor: "HDFC Securities", category: "transfer:investment" },
+      { raw_pattern: "exampletool", canonical_vendor: "ExampleTool" },
+      { raw_pattern: "othertool", canonical_vendor: "OtherTool" },
+      { raw_pattern: "exampleai", canonical_vendor: "ExampleAI" },
+    ])
+      await upsertVendorAlias(db(), a);
+    const r = await importCsv(db(), exportCsv, { expected: exp });
+    expect(r.count_warning).toBeUndefined();
+    expect(r.rejected).toEqual([]);
+    expect(r.refunds_linked).toBe(1);
+    expect(r.mandate_events_applied).toEqual({ registered: 3, upcoming: 1, declined: 0, cancelled: 1 });
+    expect(r.warnings.map((w) => w.message)).toEqual([expect.stringMatching(/declined auto-debit for "OtherTool"/)]);
+
+    const rows = (await listCharges(db(), { month: "2026-09" })).charges;
+    const by = (p: string) => rows.find((c) => c.payee_raw?.includes(p))!;
+    // "(email time)" stripped, IST kept.
+    expect(by("WISE").charged_at).toBe(new Date("2026-09-01T18:48:00+05:30").toISOString());
+    // A bank handle (@rxairtel) never names the vendor; the UPI payee name does.
+    expect(by("Example Health").vendor).toBe("Example Health Pvt Ltd");
+    // Account last four is not a card number.
+    expect(by("Example Health").card_last4).toBeNull();
+    expect(by("EXAMPLETOOL").card_last4).toBe("2222");
+    expect(by("A FRIEND").category).toBe("transfer:people");
+    expect(by("HSL Sec").category).toBe("transfer:investment");
+    expect(rows.find((c) => c.payee_raw === "OTHERTOOL IDE")!.is_refunded).toBe(true);
+
+    const subs = await db().select().from(subscriptions);
+    const tool = subs.find((s) => s.vendor === "ExampleTool")!;
+    expect([tool.amount, tool.currency, tool.nextChargeDate]).toEqual(["12.00", "USD", "2026-10-10"]);
+    expect(by("EXAMPLETOOL").subscription_id).toBe(tool.id);
+    const other = subs.filter((s) => s.vendor === "OtherTool").sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+    expect(other.map((s) => [s.mandateInfo?.mandate_ref, s.status])).toEqual([["SI Hub ID CCC", "cancelled"], ["SI Hub ID DDD", "active"]]);
+    const ai = subs.find((s) => s.vendor === "ExampleAI")!;
+    expect([ai.amount, ai.nextChargeDate]).toEqual(["1999.00", "2026-10-11"]);
+
+    const sep = await getMonthSummary(db(), { month: "2026-09" });
+    const inr = sep.currencies[0];
+    expect(inr.spent).toBe("2147.00");
+    expect(inr.transfers_by_category).toEqual([
+      { category: "transfer:investment", amount: "5000.00" },
+      { category: "transfer:people", amount: "150.00" },
+    ]);
+  });
+
+  it("re-importing the export changes nothing", async () => {
+    await importCsv(db(), exportCsv, { expected: exp });
+    const snap = async () => JSON.stringify([await db().select().from(charges).orderBy(charges.id), await db().select().from(subscriptions).orderBy(subscriptions.id), await db().select().from(upcomingEvents).orderBy(upcomingEvents.id)]);
+    const before = await snap();
+    const r = await importCsv(db(), exportCsv, { expected: exp });
+    expect(r.charges.existing).toBe(7);
+    expect(await snap()).toBe(before);
   });
 });

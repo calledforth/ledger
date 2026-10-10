@@ -266,7 +266,7 @@ function Calendar({
   const firstDow = (new Date(`${month}-01T00:00:00Z`).getUTCDay() + 6) % 7; // Monday first
   const spendByDay = new Map<number, Record<string, string>>();
   for (const r of rows) {
-    if (r.direction !== "debit" || r.is_refunded) continue;
+    if (r.direction !== "debit" || r.is_refunded || r.category?.startsWith("transfer:")) continue;
     const d = Number(r.date.slice(8));
     const m = spendByDay.get(d) ?? {};
     m[r.currency] = addMoney(m[r.currency] ?? "0", r.amount);

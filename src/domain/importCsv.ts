@@ -1,14 +1,14 @@
 import { parse } from "csv-parse/sync";
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { subscriptions, upcomingEvents, type MandateEvent, type Subscription } from "@/db/schema";
+import { charges, subscriptions, upcomingEvents, type MandateEvent, type Subscription } from "@/db/schema";
 import { blankToNull, maskLongNumbers, normalizeAmount, normalizeCardLast4, normalizeCurrency } from "@/lib/sanitize";
-import { diffDays, istDate, parseIstTimestamp } from "@/lib/time";
+import { addMonths, diffDays, istDate, parseIstTimestamp } from "@/lib/time";
 import { resolveVendor } from "./aliases";
-import { addCharge, type Channel } from "./charges";
+import { addCharge, markRefunded, type Channel } from "./charges";
 import { DomainError } from "./errors";
 import { addUpcomingEvent } from "./upcoming";
-import { cancelSubscription, findActiveSubscriptionForVendor, upsertSubscription } from "./subscriptions";
+import { advanceByCycle, cancelSubscription, findActiveSubscriptionForVendor, upsertSubscription } from "./subscriptions";
 
 export const CSV_COLUMNS = [
   "date",
@@ -25,7 +25,8 @@ export const CSV_COLUMNS = [
   "note",
 ] as const;
 
-type Row = Partial<Record<(typeof CSV_COLUMNS)[number], string>>;
+/** Alternative headers accepted too (e.g. Ma boi's export): datetime_ist, event_type, account_or_card_last4, flag_personal_payee. */
+type Row = Partial<Record<(typeof CSV_COLUMNS)[number] | "datetime_ist" | "event_type" | "account_or_card_last4" | "flag_personal_payee" | "subject", string>>;
 export type MandateType = "registered" | "upcoming" | "declined" | "cancelled";
 
 export type ImportReport = {
@@ -35,6 +36,7 @@ export type ImportReport = {
   mandate_rows: number;
   charges: { created: number; existing: number; merged: number; created_needs_review: number };
   credits: number;
+  refunds_linked: number;
   mandate_events_applied: Record<MandateType, number>;
   mandate_events_skipped_existing: number;
   flagged_for_review: number;
@@ -100,8 +102,8 @@ const MANDATE_TAG = /\bmandate[_ -](registered|upcoming|declined|cancelled|cance
 
 /**
  * Mandate-row rule (first match wins):
- *  1. direction starts with "mandate" (mandate_registered, mandate-upcoming, "mandate", ...). The suffix gives the
- *     type; if there is none, the type comes from the note.
+ *  1. event_type (or direction) names a mandate: mandate_registered, mandate-upcoming, upcoming_mandate,
+ *     autopay_declined, "mandate", ... The other word gives the type; if there is none, the type comes from the note.
  *  2. direction is not debit/credit (blank or anything else) and the note mentions a mandate ("mandate",
  *     "e-mandate", "standing instruction", "SI", "autopay"). Type from the note.
  *  3. the note contains an explicit tag like "mandate_upcoming", whatever the direction says.
@@ -115,9 +117,9 @@ export function classifyRow(direction: string | undefined, note: string | undefi
     for (const [t, re] of TYPE_PATTERNS) if (re.test(text)) return t;
     return null;
   };
-  if (d.startsWith("mandate") || d.startsWith("e_mandate") || d === "si" || d.startsWith("standing_instruction")) {
-    const suffix = d.replace(/^(e_)?mandate_?|^standing_instruction_?|^si_?/, "").replace("canceled", "cancelled");
-    const t = (["registered", "upcoming", "declined", "cancelled"] as const).find((x) => x === suffix) ?? typeFrom(suffix) ?? typeFrom(n);
+  if (/^(e_)?mandate|_mandate$|^autopay|^si$|^si_|^standing_instruction/.test(d)) {
+    const suffix = d.replace(/(e_)?mandate|autopay|standing_instruction|^si/g, "").replace(/^_+|_+$/g, "").replace("canceled", "cancelled");
+    const t = (["registered", "upcoming", "declined", "cancelled"] as const).find((x) => x === suffix) ?? (suffix ? typeFrom(suffix) : null) ?? typeFrom(n);
     return t ? { kind: "mandate", type: t } : { kind: "invalid", reason: `mandate row with unknown event type (direction "${direction}")` };
   }
   const tag = n.match(MANDATE_TAG);
@@ -144,6 +146,33 @@ function findDateInText(text: string): string | null {
 // ---- import -----------------------------------------------------------------------------------------------------
 
 class DryRunRollback extends Error {}
+
+/** Map alternative headers onto the documented ones (in place). */
+function normalizeRecord(r: Row) {
+  if (r.datetime_ist && !r.date) {
+    const m = r.datetime_ist.replace(/\(.*?\)/g, "").trim().match(/^(\S+)(?:[ T]+(.+))?$/);
+    if (m) {
+      r.date = m[1];
+      r.time = m[2]?.trim() ?? "";
+    }
+  }
+  if (r.account_or_card_last4 && r.card_last4 === undefined) {
+    // An account's last four is not a card; keep it only on card payments.
+    const ch = r.channel ?? "";
+    r.card_last4 = /card|pos|visa|master|rupay/i.test(ch) && !/refund|reversal/i.test(ch) ? r.account_or_card_last4 : "";
+  }
+}
+
+const titleCase = (s: string) =>
+  /[a-z]/.test(s) ? s : s.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase());
+
+/** "MERCHANT NAME | vpa@bank" -> "Merchant Name" (UPI alerts carry the payee name before the VPA). */
+export function upiPayeeName(raw: string | undefined): string | null {
+  if (!raw || !raw.includes("|")) return null;
+  const name = raw.split("|")[0].trim();
+  if (!name || name.includes("@") || /^\d+$/.test(name)) return null;
+  return titleCase(name).slice(0, 80);
+}
 
 export type ImportOptions = {
   dry_run?: boolean;
@@ -172,6 +201,7 @@ export async function importCsv(db: Db, csvText: string, opts: ImportOptions = {
     mandate_rows: 0,
     charges: { created: 0, existing: 0, merged: 0, created_needs_review: 0 },
     credits: 0,
+    refunds_linked: 0,
     mandate_events_applied: { registered: 0, upcoming: 0, declined: 0, cancelled: 0 },
     mandate_events_skipped_existing: 0,
     flagged_for_review: 0,
@@ -192,8 +222,10 @@ export async function importCsv(db: Db, csvText: string, opts: ImportOptions = {
   } catch (e) {
     throw new DomainError("invalid_input", `CSV could not be parsed: ${(e as Error).message}`);
   }
+  for (const r of records) normalizeRecord(r.record);
   if (records.length) {
-    const missing = ["date", "direction", "amount", "currency"].filter((c) => !(c in records[0].record));
+    const missing = ["date", "amount", "currency"].filter((c) => !(c in records[0].record));
+    if (!("direction" in records[0].record) && !("event_type" in records[0].record)) missing.push("direction");
     if (missing.length) throw new DomainError("invalid_input", `CSV is missing required columns: ${missing.join(", ")}. Expected: ${CSV_COLUMNS.join(", ")}`);
   }
 
@@ -202,7 +234,8 @@ export async function importCsv(db: Db, csvText: string, opts: ImportOptions = {
   for (const { record, info } of records) {
     report.rows_read++;
     const line = info.lines;
-    const cls = classifyRow(record.direction, record.note);
+    const eventType = (record.event_type ?? "").trim();
+    const cls = eventType && !/^trans/i.test(eventType) ? classifyRow(eventType, record.note) : classifyRow(record.direction, record.note);
     if (cls.kind === "invalid") {
       report.rejected.push({ line, reason: cls.reason });
       continue;
@@ -257,17 +290,23 @@ async function applyTransaction(db: Db, row: Row, at: Date, direction: "debit" |
   } catch (e) {
     throw new DomainError("invalid_input", (e as Error).message);
   }
+  const personal = TRUTHY.has((row.flag_personal_payee ?? "").trim().toLowerCase());
+  // Vendor: an alias wins; otherwise the payee name a UPI alert carries (unless the row is flagged unknown).
+  const alias = await resolveVendor(db, maskLongNumbers(row.vendor_raw ?? null));
+  const vendor = alias ? null : flagged ? null : upiPayeeName(row.vendor_raw);
   const res = await addCharge(db, {
     amount,
     currency,
     charged_at: at.toISOString(),
     source: "hdfc_alert",
     direction,
+    vendor,
     hdfc_message_id: blankToNull(row.gmail_message_id),
     channel: parseChannel(row.channel),
     payee_raw: row.vendor_raw,
     card_last4: last4.value,
     reference: row.reference,
+    category: !alias?.category && personal ? "transfer:people" : undefined,
     notes: row.note,
     needs_review: flagged || undefined,
     review_reason: flagged ? "unknown_vendor" : undefined,
@@ -276,6 +315,30 @@ async function applyTransaction(db: Db, row: Row, at: Date, direction: "debit" |
   report.charges[res.status]++;
   if (direction === "credit") report.credits++;
   if (res.charge.needs_review && res.status !== "existing") report.flagged_for_review++;
+
+  // Card reversals ("CRV POS ...", channel "card refund"): link to the charge they refund when exactly one fits.
+  const isRefund = direction === "credit" && (/refund|reversal/i.test(row.channel ?? "") || /^CRV\s/i.test(row.vendor_raw ?? ""));
+  if (isRefund && res.status !== "existing" && res.charge.vendor && !res.charge.refund_of_charge_id) {
+    const candidates = await db
+      .select({ id: charges.id })
+      .from(charges)
+      .where(
+        and(
+          eq(charges.direction, "debit"),
+          eq(charges.isRefunded, false),
+          eq(charges.currency, currency),
+          sql`lower(${charges.vendor}) = lower(${res.charge.vendor})`,
+          sql`${charges.chargedAt} between ${at.toISOString()}::timestamptz - interval '30 days' and ${at.toISOString()}::timestamptz`,
+          sql`abs(${charges.amount} - ${amount}::numeric) <= greatest(${amount}::numeric * 0.02, 1)`,
+        ),
+      );
+    if (candidates.length === 1) {
+      await markRefunded(db, { charge_id: candidates[0].id, refund_charge_id: res.charge.id });
+      report.refunds_linked++;
+    } else {
+      report.warnings.push({ line, message: `refund credit not linked: ${candidates.length} matching charges` });
+    }
+  }
 }
 
 async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line: number, report: ImportReport) {
@@ -287,23 +350,32 @@ async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line:
   const date = istDate(at);
   const note = row.note ?? "";
   const ref = blankToNull(row.reference);
-  const currency = normalizeCurrency(row.currency || "INR");
-  let amount: string | null = null;
-  try {
-    amount = row.amount ? normalizeAmount(row.amount) : null;
-  } catch {
-    report.warnings.push({ line, message: `ignored unparseable amount "${row.amount}"` });
+  // HDFC SI notices: "Max USD 23.60, frequency monthly, start 24/09/2026, end 24/09/2046".
+  const maxMatch = note.match(/\bmax\.?\s*([A-Z]{3})?\s*([\d,]+(?:\.\d+)?)/i);
+  const currency = normalizeCurrency(maxMatch?.[1] || row.currency || "INR");
+  let rowAmount: string | null = null;
+  if (row.amount && Number(row.amount.replace(/,/g, "")) !== 0) {
+    try {
+      rowAmount = normalizeAmount(row.amount);
+    } catch {
+      report.warnings.push({ line, message: `ignored unparseable amount "${row.amount}"` });
+    }
   }
+  const maxAmount = maxMatch && Number(maxMatch[2].replace(/,/g, "")) > 0 ? normalizeAmount(maxMatch[2]) : null;
+  // Registrations record the mandate max as the subscription amount; notices use the amount in the row.
+  const amount = type === "registered" ? (maxAmount ?? rowAmount) : (rowAmount ?? maxAmount);
   const event: MandateEvent = { type, date, amount: amount ?? undefined, message_id: messageId, note: maskLongNumbers(note) };
-  const cycle = /year|annual|yearly/i.test(note) ? "yearly" : "monthly";
+  // "As Presented" (variable amount, billed when the vendor charges) is treated as monthly.
+  const cycle = /year|annual/i.test(note) ? "yearly" : "monthly";
+  const startMatch = note.match(/\bstart\s+(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}-\d{2}-\d{2})/i);
+  const start = startMatch ? parseCsvDate(startMatch[1]) : date;
 
-  let sub = await findActiveSubscriptionForVendor(db, vendor, ref);
-  if (sub && messageId && (sub.mandateInfo?.events ?? []).some((e) => e.message_id === messageId)) {
-    report.mandate_events_skipped_existing++;
-    return;
-  }
-  if (!sub && messageId) {
-    // Already applied to a subscription that has since been cancelled?
+  // A cancellation names a specific mandate: only touch the subscription carrying that mandate ref.
+  let sub: Subscription | null = type === "cancelled" && ref ? await findActiveSubscriptionByMandateRef(db, vendor, ref) : await findActiveSubscriptionForVendor(db, vendor, ref);
+  // Events never apply to a subscription that started after them (keeps re-imports order-independent).
+  if (sub && type !== "registered" && sub.startedAt > date) sub = null;
+  if (messageId) {
+    // Already applied (to any subscription, including one cancelled since)?
     const [seen] = await db
       .select({ id: subscriptions.id })
       .from(subscriptions)
@@ -328,13 +400,13 @@ async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line:
     if (!amount) throw new DomainError("invalid_input", "mandate registration needs an amount (the mandate max)");
     const res = await upsertSubscription(db, {
       vendor,
-      plan: "Mandate",
+      plan: "Auto-debit",
       amount,
       currency,
       cycle,
-      started_at: date,
+      started_at: start,
       keep_other_active: true,
-      mandate_info: { max_amount: amount, currency, mandate_ref: ref, bank: "HDFC", events: [] },
+      mandate_info: { max_amount: maxAmount ?? amount, currency, mandate_ref: ref, bank: "HDFC", events: [] },
     });
     const [created] = await db.select().from(subscriptions).where(eq(subscriptions.id, res.subscription.id));
     sub = created;
@@ -346,7 +418,16 @@ async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line:
       const existed = !!sub;
       const s = await ensureSub();
       const info = s.mandateInfo ?? {};
-      await appendEvent(s, existed && amount ? { mandateInfo: { ...info, max_amount: amount, currency, mandate_ref: ref ?? info.mandate_ref ?? null, bank: "HDFC", events: [...(info.events ?? []), event] } } : {});
+      // The first payment usually goes through right before the mandate is set up (and, for older plans, earlier
+      // cycles too). Link those debits to the subscription.
+      const linked = await linkPastDebits(db, s, start, cycle);
+      const next = s.nextChargeDate ?? (linked.firstPaid ? advanceByCycle(start, cycle) : start);
+      await appendEvent(s, {
+        nextChargeDate: next,
+        ...(existed && amount
+          ? { mandateInfo: { ...info, max_amount: maxAmount ?? amount, currency, mandate_ref: ref ?? info.mandate_ref ?? null, bank: "HDFC", events: [...(info.events ?? []), event] } }
+          : {}),
+      });
       break;
     }
     case "upcoming": {
@@ -367,11 +448,11 @@ async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line:
       break;
     }
     case "declined": {
-      if (!sub) {
-        report.warnings.push({ line, message: `declined mandate for "${vendor}" but no active subscription; recorded nothing` });
+      const s = sub;
+      if (!s) {
+        report.warnings.push({ line, message: `declined auto-debit for "${vendor}" but no subscription exists yet; recorded nothing` });
         return;
       }
-      const s = sub;
       const pending = await db
         .select()
         .from(upcomingEvents)
@@ -394,4 +475,41 @@ async function applyMandate(db: Db, row: Row, at: Date, type: MandateType, line:
     }
   }
   report.mandate_events_applied[type]++;
+}
+
+/** Link unlinked debits of the same vendor that fall within ±3 days of the mandate start or earlier cycles. */
+async function linkPastDebits(db: Db, sub: Subscription, start: string, cycle: "monthly" | "yearly") {
+  const anchors = (cycle === "yearly" ? [0, 12] : [0, 1, 2, 3]).map((k) => addMonths(start, -k));
+  let firstPaid = false;
+  for (const [i, anchor] of anchors.entries()) {
+    const rows = await db
+      .update(charges)
+      .set({ subscriptionId: sub.id })
+      .where(
+        and(
+          eq(charges.direction, "debit"),
+          sql`${charges.subscriptionId} is null`,
+          sql`lower(${charges.vendor}) = lower(${sub.vendor})`,
+          sql`abs((${charges.chargedAt} at time zone 'Asia/Kolkata')::date - ${anchor}::date) <= 3`,
+        ),
+      )
+      .returning({ id: charges.id });
+    if (i === 0 && rows.length) firstPaid = true;
+  }
+  return { firstPaid };
+}
+
+async function findActiveSubscriptionByMandateRef(db: Db, vendor: string, ref: string) {
+  const [row] = await db
+    .select()
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.status, "active"),
+        sql`lower(${subscriptions.vendor}) = lower(${vendor})`,
+        sql`${subscriptions.mandateInfo}->>'mandate_ref' = ${ref}`,
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }

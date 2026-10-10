@@ -9,11 +9,15 @@ export type SummaryCardData = {
   one_time: string;
   credits: string;
   refunded: string;
+  transfers: string;
+  transfers_by_category: { category: string; amount: string }[];
   credits_by_source: { vendor: string; channel: string | null; amount: string }[];
   daily: { day: number; cumulative: string }[];
   top_vendors: { vendor: string; amount: string; count: number; icon: VendorIcon | null }[];
   review_count: number;
 };
+
+const TRANSFER_LABELS: Record<string, string> = { "transfer:investment": "to investments", "transfer:people": "sent to people", "transfer:self": "to your own accounts" };
 
 /** Cumulative-spend sparkline drawn to one scale; a dashed line marks today in the current month. */
 function Spark({ daily, todayDay, currency }: { daily: { day: number; cumulative: string }[]; todayDay: number | null; currency: string }) {
@@ -73,6 +77,12 @@ export function SummaryCard({ d, todayDay, past }: { d: SummaryCardData; todayDa
           <span>Nothing received in {d.currency}</span>
         )}
         {Number(d.refunded) > 0 && <span style={{ color: "var(--refund)" }}>{formatMoney(d.refunded, d.currency)} refunded, not counted</span>}
+        {Number(d.transfers) > 0 && (
+          <span style={{ color: "var(--muted)" }}>
+            {d.transfers_by_category.map((t) => `${formatMoney(t.amount, d.currency)} ${TRANSFER_LABELS[t.category] ?? `to ${t.category.slice(9)}`}`).join(", ")}
+            , not counted
+          </span>
+        )}
       </div>
       {d.top_vendors.length > 0 && (
         <details className="more">

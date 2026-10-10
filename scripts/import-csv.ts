@@ -22,6 +22,7 @@ function print(r: ImportReport) {
   line("charges existing", r.charges.existing);
   line("charges merged", r.charges.merged);
   line("credits", r.credits);
+  line("refunds linked", r.refunds_linked);
   line("mandate events applied", Object.entries(r.mandate_events_applied).map(([k, v]) => `${k} ${v}`).join(", "));
   line("mandate events already applied", r.mandate_events_skipped_existing);
   line("rows flagged for review", r.flagged_for_review);

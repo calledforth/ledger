@@ -7,7 +7,9 @@ import { aliasJson, chargeJson } from "./serialize";
 /**
  * Alias rule: raw_pattern is a case-insensitive SUBSTRING of payee_raw. When several patterns match,
  * the longest pattern wins (ties broken by oldest alias). No wildcards or regex.
+ * UPI handles ("@okicici", "@rxairtel") are ignored when matching, so a bank handle never names a vendor.
  */
+export const matchableSql = (col: unknown) => sql`regexp_replace(${col}, '@[^\s|]+', '', 'g')`;
 export async function resolveVendor(
   db: Db,
   payeeRaw: string | null | undefined,
@@ -16,7 +18,7 @@ export async function resolveVendor(
   const rows = await db
     .select({ vendor: vendorAliases.canonicalVendor, category: vendorAliases.category })
     .from(vendorAliases)
-    .where(sql`position(lower(${vendorAliases.rawPattern}) in lower(${payeeRaw})) > 0`)
+    .where(sql`position(lower(${vendorAliases.rawPattern}) in lower(${matchableSql(payeeRaw)})) > 0`)
     .orderBy(sql`length(${vendorAliases.rawPattern}) desc`, asc(vendorAliases.createdAt))
     .limit(1);
   return rows[0] ?? null;
@@ -71,7 +73,7 @@ export async function reapplyAliases(db: Db, pattern: string) {
   const rows = await db
     .select()
     .from(charges)
-    .where(sql`${charges.payeeRaw} IS NOT NULL AND position(lower(${pattern}) in lower(${charges.payeeRaw})) > 0`);
+    .where(sql`${charges.payeeRaw} IS NOT NULL AND position(lower(${pattern}) in lower(${matchableSql(charges.payeeRaw)})) > 0`);
   const updated = [];
   for (const row of rows) {
     const hit = await resolveVendor(db, row.payeeRaw);

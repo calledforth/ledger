@@ -36,10 +36,11 @@ thin wrappers.
 | --- | --- |
 | Per-currency totals only. No FX code anywhere. Money is summed as integer minor units. | `domain/money.ts`, `domain/summary.ts` |
 | Refunded debits excluded from spending; the linked refund credit excluded from credits. Credits never count as spending. | `domain/summary.ts` |
+| Money moved rather than spent (category `transfer:*`: `transfer:investment` for the HDFC Securities broker account, `transfer:people` for family and friends) is listed and shown under the total, but not counted as spending. | `domain/summary.ts` |
 | Month boundaries in IST; timestamps without an offset are IST. | `lib/time.ts` |
 | Idempotency on `hdfc_message_id` / `receipt_message_id`: partial unique indexes + `INSERT … ON CONFLICT DO NOTHING`; retries fill nulls, overwrite only with `overwrite: true`. | `domain/charges.ts` |
 | Dedup: debit, same currency, amounts within **1.00** (receipt tax rounding), `charged_at` within **±2 days**, and the existing row lacks the other message id. Exactly one candidate merges; more than one inserts with `needs_review` + returns candidates. Bank fields (channel, payee_raw, card_last4, reference, timestamp, amount) come from the alert, receipt fields (vendor, invoice_number, pdf) from the receipt. `source` keeps the original row's value; `merged_from` records what was folded in. | `domain/charges.ts` |
-| Vendor aliases: `raw_pattern` is a **case-insensitive substring** of `payee_raw`; the longest matching pattern wins. | `domain/aliases.ts` |
+| Vendor aliases: `raw_pattern` is a **case-insensitive substring** of `payee_raw`; the longest matching pattern wins. UPI handles (`@okicici`, `@rxairtel`) are ignored when matching, so a bank handle never names a vendor. | `domain/aliases.ts` |
 | Unknown vendor after alias lookup → `needs_review = true` (`review_reason = unknown_vendor`). | `domain/charges.ts` |
 | Subscription link: same vendor (case-insensitive) + currency, amount within 1.00 or ≤ mandate `max_amount`, date within ±3 days of `next_charge_date`. Advances `next_charge_date` by the cycle; one-off subscriptions close after their charge. | `domain/subscriptions.ts` |
 | Plan change closes the old row (`cancelled`, `ended_at`) and opens a new active row. One active row per (vendor, plan), enforced by a partial unique index. | `domain/subscriptions.ts` |
@@ -137,19 +138,33 @@ Or have the assistant call `import_csv` with `csv_text` or `csv_base64` (and `dr
 (`domain/importCsv.ts`). Expected columns: `date,time,direction,amount,currency,channel,vendor_raw,card_last4,
 reference,gmail_message_id,flag_unknown_vendor,note`.
 
+The export format Ma boi produces is accepted as well: `datetime_ist` (e.g. `2026-09-02 10:32 (email time)`) instead
+of `date`/`time`, `event_type` (`transaction`, `mandate_registered`, `upcoming_mandate`, `autopay_declined`,
+`mandate_cancelled`) instead of a mandate value in `direction`, `account_or_card_last4` (kept only on card payments,
+since on UPI/NEFT rows it is the account), and `flag_personal_payee` (→ category `transfer:people`). Extra columns such
+as `subject` are ignored.
+
 - `date` + `time` are IST (`YYYY-MM-DD`, `DD-MM-YYYY`, `DD/MM/YYYY`; `HH:MM[:SS]` or `9:15 PM`).
 - `gmail_message_id` → `hdfc_message_id`, so a re-import creates nothing new. Mandate events are keyed by the same id.
 - `card_last4` keeps the last four digits (warning in the report if more were given). `flag_unknown_vendor` of
-  `true/yes/y/1` → `needs_review`. `vendor_raw` → `payee_raw` → alias resolution.
+  `true/yes/y/1` → `needs_review`. `vendor_raw` → `payee_raw` → alias resolution; when no alias matches, the payee
+  name a UPI alert carries before the `|` becomes the vendor (unless the row is flagged unknown).
+- Card reversals (`card refund` channel or `CRV POS …` payee) are linked to the charge they refund when exactly one
+  debit from the same vendor within 30 days is within 2% of the amount (forex rounding); that charge is marked refunded.
 - **Mandate rule** (first match wins): (1) `direction` starts with `mandate` (`mandate_registered`, `mandate-upcoming`,
   …; the suffix is the type, otherwise the note decides); (2) `direction` is not debit/credit and the note mentions
   "mandate", "e-mandate", "standing instruction", "SI" or "autopay"; (3) the note contains a tag such as
   `mandate_upcoming`. Type keywords are checked in the order declined → cancelled → upcoming → registered.
-  - registered → creates or updates an active subscription (amount = mandate max, `mandate_info` filled).
+  - registered → creates or updates an active subscription (amount = mandate max, read from the row or from
+    "Max USD 23.60" in the note; cycle from "frequency annual|monthly", "As Presented" counts as monthly). Debits from
+    that vendor within ±3 days of the start date (or of up to three earlier cycles) are linked to it, and
+    `next_charge_date` is start + cycle when the first payment is found, otherwise the start date.
   - upcoming → pending `upcoming_events` row (date from the note if it contains one, else the row date) and refreshes
     `next_charge_date`.
-  - declined → appended to `mandate_info.events`; the nearest pending event is marked declined. No charge.
-  - cancelled → subscription cancelled with `ended_at` = that date.
+  - declined → appended to `mandate_info.events`; the nearest pending event is marked declined. No charge. A decline
+    that arrives before any subscription for that vendor exists is reported as a warning.
+  - cancelled → the subscription carrying that mandate reference (`SI Hub ID …`) is cancelled with `ended_at` = that date.
+  - Events never attach to a subscription that started after them, so a re-import changes nothing.
 - Rows are processed in time order. The whole file is one transaction; each row has its own savepoint, so a bad row is
   reported with its line number and skipped. The report lists rows read, charges created/existing/merged, credits,
   mandate events applied, rows flagged and rows rejected, and warns if the file doesn't hold 52 transactions + 11
