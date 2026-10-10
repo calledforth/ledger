@@ -23,6 +23,11 @@ One page, two views, behind a password login:
   then active subscriptions. Click a subscription to mark it cancelled (with the cancellation date and the date access
   ends) or just set an end date. This never contacts the vendor; the sheet links to the billing page.
 
+Light and dark follow the system; the toggle in the top bar pins either one (kept in a `theme` cookie so the first paint
+is already right). Switching between list and calendar, picking a day, and moving between months happen in the browser:
+month data comes from `GET /api/month?m=YYYY-MM`, is cached per month, and the months either side are prefetched, so a
+switch is instant and an uncached month shows skeletons right away instead of freezing the page.
+
 The month arrows go back through history and forward into future months, where the page shows what is due that month.
 Vendor logos come from [Simple Icons](https://simpleicons.org) (Wise, Upwork, Netflix, Spotify, Anthropic, …); vendors
 without one get a lettered badge.

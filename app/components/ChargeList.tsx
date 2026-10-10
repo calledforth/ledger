@@ -1,34 +1,20 @@
 "use client";
 
+import { CircleAlert, CreditCard, ExternalLink, FileText, Landmark, Repeat, Smartphone, Undo2, X } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { saveCharge } from "../actions";
-import type { VendorIcon } from "@/lib/icons";
+import type { ChargeRow } from "../dashboard/types";
 import { VendorBadge } from "./VendorBadge";
 
-export type ChargeRow = {
-  id: string;
-  vendor: string | null;
-  payee_raw: string | null;
-  amount: string;
-  amount_label: string;
-  currency: string;
-  date: string; // IST YYYY-MM-DD
-  day_label: string;
-  time_label: string;
-  direction: "debit" | "credit";
-  channel: string | null;
-  category: string | null;
-  notes: string | null;
-  is_refunded: boolean;
-  is_refund_credit: boolean;
-  needs_review: boolean;
-  review_reason: string | null;
-  subscription: string | null;
-  pdf_url: string | null;
-  invoice_number: string | null;
-  card_last4: string | null;
-  icon: VendorIcon | null;
-};
+export type { ChargeRow };
+
+export function ChannelIcon({ channel }: { channel: string | null }) {
+  const c = channel?.toLowerCase() ?? "";
+  if (c.includes("card")) return <CreditCard size={13} aria-hidden />;
+  if (c.includes("upi")) return <Smartphone size={13} aria-hidden />;
+  if (/neft|imps|rtgs|bank|ach/.test(c)) return <Landmark size={13} aria-hidden />;
+  return null;
+}
 
 const REASONS: Record<string, string> = {
   unknown_vendor: "Who was this?",
@@ -71,12 +57,28 @@ export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: 
                 <span className="meta">
                   <span className="v">{r.vendor ?? r.payee_raw ?? "Unknown"}</span>
                   <span className="s">
-                    {r.subscription && <span className="tag sub">{r.subscription}</span>}
+                    {r.subscription && (
+                      <span className="tag sub">
+                        <Repeat size={11} />
+                        {r.subscription}
+                      </span>
+                    )}
                     {r.direction === "credit" && <span className="tag cr">{r.is_refund_credit ? "refund" : (r.category ?? "received")}</span>}
-                    {r.is_refunded && <span className="tag">refunded</span>}
-                    {r.needs_review && <span className="tag rv">{REASONS[r.review_reason ?? ""] ?? "Needs review"}</span>}
+                    {r.is_refunded && (
+                      <span className="tag">
+                        <Undo2 size={11} />
+                        refunded
+                      </span>
+                    )}
+                    {r.needs_review && (
+                      <span className="tag rv">
+                        <CircleAlert size={11} />
+                        {REASONS[r.review_reason ?? ""] ?? "Needs review"}
+                      </span>
+                    )}
                     {r.direction === "debit" && !r.subscription && r.category && <span className="tag">{r.category}</span>}
-                    <span>
+                    <span className="when">
+                      <ChannelIcon channel={r.channel} />
                       {r.time_label}
                       {r.channel ? ` · ${r.channel}` : ""}
                     </span>
@@ -84,7 +86,11 @@ export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: 
                 </span>
                 <span className="amt">
                   <span className="num">{r.amount_label}</span>
-                  {r.pdf_url && <span className="s">invoice</span>}
+                  {r.pdf_url && (
+                    <span className="s inv">
+                      <FileText size={12} /> invoice
+                    </span>
+                  )}
                 </span>
               </button>
             ))}
@@ -92,7 +98,7 @@ export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: 
         ))}
       </div>
       <dialog ref={dialog} className="sheet" onClose={() => setEditing(null)} aria-labelledby="edit-title">
-        {editing && <EditCharge row={editing} close={() => dialog.current?.close()} />}
+        {editing && <EditCharge key={editing.id} row={editing} close={() => dialog.current?.close()} />}
       </dialog>
     </>
   );
@@ -115,24 +121,28 @@ function EditCharge({ row, close }: { row: ChargeRow; close: () => void }) {
       <input type="hidden" name="id" value={row.id} />
       <header>
         <VendorBadge icon={row.icon} name={row.vendor} />
-        <div>
+        <div className="grow">
           <h3 id="edit-title">{row.vendor ?? "Unknown vendor"}</h3>
-          <div className="muted num">
-            {row.amount_label} · {row.day_label}, {row.time_label}
+          <div className="muted">
+            <span className="num">{row.amount_label}</span> · {row.day_label}, {row.time_label}
           </div>
         </div>
+        <button type="button" className="iconbtn ghost" onClick={close} aria-label="Close">
+          <X size={18} />
+        </button>
       </header>
       <dl className="kv">
         {row.payee_raw && (
           <>
             <dt>Bank says</dt>
-            <dd className="num">{row.payee_raw}</dd>
+            <dd className="num mono-sm">{row.payee_raw}</dd>
           </>
         )}
         {row.channel && (
           <>
             <dt>Paid via</dt>
-            <dd>
+            <dd className="with-icon">
+              <ChannelIcon channel={row.channel} />
               {row.channel}
               {row.card_last4 ? ` ·· ${row.card_last4}` : ""}
             </dd>
@@ -143,7 +153,7 @@ function EditCharge({ row, close }: { row: ChargeRow; close: () => void }) {
             <dt>Invoice</dt>
             <dd>
               <a href={row.pdf_url} target="_blank" rel="noopener noreferrer">
-                {row.invoice_number ?? "Open PDF"} ↗
+                {row.invoice_number ?? "Open PDF"} <ExternalLink size={12} />
               </a>
             </dd>
           </>

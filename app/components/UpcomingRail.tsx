@@ -1,37 +1,12 @@
 "use client";
 
+import { CalendarClock, CircleCheck, ExternalLink, Repeat, X } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { cancelSub, setSubEnd } from "../actions";
-import type { VendorIcon } from "@/lib/icons";
+import type { SubCard, UpWeek } from "../dashboard/types";
 import { VendorBadge } from "./VendorBadge";
 
-export type UpItem = {
-  key: string;
-  date: string;
-  day: string;
-  mon: string;
-  vendor: string;
-  plan: string | null;
-  amount_label: string;
-  detail: string;
-  mandate: boolean;
-  subscription_id: string | null;
-  icon: VendorIcon | null;
-};
-export type UpWeek = { label: string; totals: string; items: UpItem[] };
-export type SubCard = {
-  id: string;
-  vendor: string;
-  plan: string;
-  amount_label: string;
-  cycle: string;
-  next_charge_date: string | null;
-  next_label: string | null;
-  ended_at: string | null;
-  billing_url: string | null;
-  mandate: string | null;
-  icon: VendorIcon | null;
-};
+export type { SubCard, UpWeek };
 
 export function UpcomingRail({
   weeks,
@@ -56,11 +31,14 @@ export function UpcomingRail({
   };
 
   return (
-    <aside className="panel" aria-label={title}>
+    <aside className="panel rail" aria-label={title}>
       {weeks && (
         <>
           <div className="panel-head">
-            <h2>{title}</h2>
+            <h2>
+              <CalendarClock size={17} className="h-icon" />
+              {title}
+            </h2>
           </div>
           {weeks.length === 0 && <div className="empty">{emptyText}</div>}
           {weeks.map((w) => (
@@ -84,10 +62,10 @@ export function UpcomingRail({
                   </span>
                   <VendorBadge icon={it.icon} name={it.vendor} />
                   <span className="meta">
-                    <div className="v">
-                      {it.vendor} {it.plan && <span className="muted" style={{ fontWeight: 400 }}>{it.plan}</span>}
-                    </div>
-                    <div className="s">{it.detail}</div>
+                    <span className="v">
+                      {it.vendor} {it.plan && <span className="plan">{it.plan}</span>}
+                    </span>
+                    <span className="s">{it.detail}</span>
                   </span>
                   <span className="num">{it.amount_label}</span>
                 </button>
@@ -97,11 +75,12 @@ export function UpcomingRail({
         </>
       )}
 
-      <div className="panel-head" style={{ marginTop: weeks ? 12 : 0 }}>
-        <h2>Subscriptions</h2>
-        <span className="muted" style={{ fontSize: 12 }}>
-          {subs.length} active
-        </span>
+      <div className="panel-head" style={{ marginTop: weeks ? 14 : 0 }}>
+        <h2>
+          <Repeat size={17} className="h-icon" />
+          Subscriptions
+        </h2>
+        <span className="count">{subs.length} active</span>
       </div>
       {subs.length === 0 && <div className="empty">No active subscriptions yet. Ma boi adds them from receipts and mandate emails.</div>}
       {subs.map((s) => (
@@ -113,25 +92,25 @@ export function UpcomingRail({
                 <span>{s.next_label.split(" ")[1]}</span>
               </>
             ) : (
-              <span>—</span>
+              <span>–</span>
             )}
           </span>
           <VendorBadge icon={s.icon} name={s.vendor} />
           <span className="meta">
-            <div className="v">
-              {s.vendor} <span className="muted" style={{ fontWeight: 400 }}>{s.plan}</span>
-            </div>
-            <div className="s">
+            <span className="v">
+              {s.vendor} <span className="plan">{s.plan}</span>
+            </span>
+            <span className="s">
               {s.cycle}
               {s.ended_at ? ` · ends ${s.ended_at}` : ""}
-            </div>
+            </span>
           </span>
           <span className="num">{s.amount_label}</span>
         </button>
       ))}
 
       <dialog ref={dialog} className="sheet" onClose={() => setSel(null)} aria-labelledby="sub-title">
-        {sel && <SubSheet sub={sel} today={today} close={() => dialog.current?.close()} />}
+        {sel && <SubSheet key={sel.id} sub={sel} today={today} close={() => dialog.current?.close()} />}
       </dialog>
     </aside>
   );
@@ -151,7 +130,14 @@ function SubSheet({ sub, today, close }: { sub: SubCard; today: string; close: (
   if (done)
     return (
       <div className="sheet-body">
-        <h3 id="sub-title">{done}</h3>
+        <header>
+          <span className="done-icon">
+            <CircleCheck size={22} />
+          </span>
+          <h3 id="sub-title" className="grow">
+            {done}
+          </h3>
+        </header>
         <p className="hint">
           This only updated your tracker. {sub.vendor} was not contacted.
           {sub.billing_url && (
@@ -159,7 +145,7 @@ function SubSheet({ sub, today, close }: { sub: SubCard; today: string; close: (
               {" "}
               Cancel there too on their{" "}
               <a href={sub.billing_url} target="_blank" rel="noopener noreferrer">
-                billing page ↗
+                billing page <ExternalLink size={12} />
               </a>
             </>
           )}
@@ -177,14 +163,17 @@ function SubSheet({ sub, today, close }: { sub: SubCard; today: string; close: (
       <input type="hidden" name="id" value={sub.id} />
       <header>
         <VendorBadge icon={sub.icon} name={sub.vendor} />
-        <div>
+        <div className="grow">
           <h3 id="sub-title">
-            {sub.vendor} {sub.plan}
+            {sub.vendor} <span className="muted plan">{sub.plan}</span>
           </h3>
-          <div className="muted num">
-            {sub.amount_label} {sub.cycle}
+          <div className="muted">
+            <span className="num">{sub.amount_label}</span> {sub.cycle}
           </div>
         </div>
+        <button type="button" className="iconbtn ghost" onClick={close} aria-label="Close">
+          <X size={18} />
+        </button>
       </header>
       <dl className="kv">
         <dt>Next charge</dt>
@@ -199,7 +188,7 @@ function SubSheet({ sub, today, close }: { sub: SubCard; today: string; close: (
         <dd>
           {sub.billing_url ? (
             <a href={sub.billing_url} target="_blank" rel="noopener noreferrer">
-              Open ↗
+              Open <ExternalLink size={12} />
             </a>
           ) : (
             "Not known"
