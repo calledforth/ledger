@@ -2,6 +2,7 @@
  * npm run db:seed                 vendor aliases only (safe to re-run)
  * npm run db:seed -- --demo       also inserts clearly labelled example rows (refused in production without --force)
  * npm run db:seed -- --purge-demo removes every example row
+ * npm run db:seed -- --if-empty   seeds aliases only when the table is empty (used on every Vercel deploy)
  */
 import "dotenv/config";
 import { like, or } from "drizzle-orm";
@@ -46,6 +47,13 @@ const ALIASES: { raw_pattern: string; canonical_vendor: string; category?: strin
 
 async function seedAliases() {
   const db = getDb();
+  if (args.has("--if-empty")) {
+    const [existing] = await db.select({ id: vendorAliases.id }).from(vendorAliases).limit(1);
+    if (existing) {
+      console.log("Vendor aliases already present; leaving them as they are.");
+      return;
+    }
+  }
   for (const a of ALIASES) await upsertVendorAlias(db, a);
   console.log(`Vendor aliases: ${ALIASES.length} upserted.`);
 }

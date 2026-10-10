@@ -178,8 +178,9 @@ as `subject` are ignored.
    `BLOB_READ_WRITE_TOKEN`). Add env vars for Production (and Preview if you use it): `DATABASE_URL` (pooled),
    `DATABASE_URL_UNPOOLED` (direct), `MCP_TOKEN`, `OWNER_PASSWORD_HASH` (raw bcrypt hash is fine here),
    `SESSION_SECRET`, `APP_TIMEZONE=Asia/Kolkata`.
-4. Run migrations and the alias seed against Neon from your machine:
-   `DATABASE_URL=<pooled> DATABASE_URL_UNPOOLED=<direct> npm run db:migrate && npm run db:seed`.
+4. Nothing to run by hand: Vercel uses the `vercel-build` script, which applies pending migrations and, on a fresh
+   database, seeds the vendor aliases before `next build`. Preview deploys migrate whichever database their env vars
+   point at. To do it yourself instead: `DATABASE_URL=<pooled> DATABASE_URL_UNPOOLED=<direct> npm run db:migrate && npm run db:seed`.
 5. Deploy. Point Ma boi at `https://<your-app>.vercel.app/mcp` with the bearer header, and run the backfill with a
    dry run first.
 
