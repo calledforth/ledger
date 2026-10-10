@@ -14,14 +14,19 @@ functions, and it exposes `ON CONFLICT ... WHERE` for the partial unique indexes
 
 One page, two views, behind a password login:
 
-- **This month** (default, IST): a card per currency with "spent so far", a bar splitting subscriptions from one-time
-  purchases, a cumulative-spend line, what was received and via what (e.g. Wise over NEFT), and refunds that were left
-  out. Below it, the month's charges and credits as a **list** or a **calendar** (vendor logos per day). Rows needing
+- **This month** (default, IST): one spending card with an INR / USD switch: "spent so far", a strip of
+  monthly bars (12 months; click one to open that month), a bar splitting subscriptions from one-time purchases, what
+  was received and via what (e.g. Wise over NEFT), and refunds and transfers that were left out. Below it, the month's charges and credits as a **list** or a **calendar** (vendor logos per day). Rows needing
   review are tinted, refunded rows are struck through, credits are green. Click any row to edit vendor, category or
   notes, resolve the review, mark it refunded, or save the vendor as an alias for that payee.
 - **Upcoming** (right rail): expected payments for the next 30 days grouped by week with per-currency weekly totals,
   then active subscriptions. Click a subscription to mark it cancelled (with the cancellation date and the date access
   ends) or just set an end date. This never contacts the vendor; the sheet links to the billing page.
+
+Light and dark follow the system; the toggle in the top bar pins either one (kept in a `theme` cookie so the first paint
+is already right). Switching between list and calendar, picking a day, and moving between months happen in the browser:
+month data comes from `GET /api/month?m=YYYY-MM`, is cached per month, and the months either side are prefetched, so a
+switch is instant and an uncached month shows skeletons right away instead of freezing the page.
 
 The month arrows go back through history and forward into future months, where the page shows what is due that month.
 Vendor logos come from [Simple Icons](https://simpleicons.org) (Wise, Upwork, Netflix, Spotify, Anthropic, …); vendors

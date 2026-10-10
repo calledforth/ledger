@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addCharge, markRefunded } from "@/domain/charges";
-import { getMonthSummary } from "@/domain/summary";
+import { getMonthSummary, monthlySpending } from "@/domain/summary";
 import { upcomingPayments } from "@/domain/upcoming";
 import { upsertSubscription } from "@/domain/subscriptions";
 import { addUpcomingEvent } from "@/domain/upcoming";
@@ -29,6 +29,25 @@ describe("month summary", () => {
     expect(inr.daily[30].cumulative).toBe("486.00");
     expect(s.counts.refunded).toBe(1);
     expect(s.currencies.map((c) => c.currency)).toEqual(["INR", "USD"]);
+  });
+});
+
+describe("monthly spending", () => {
+  it("buckets by IST month with the same exclusions as the month summary", async () => {
+    await addCharge(db(), { amount: 100, currency: "INR", charged_at: "2026-08-31T23:30", source: "manual", vendor: "Swiggy" }); // IST, still August
+    await addCharge(db(), { amount: 200, currency: "INR", charged_at: "2026-09-01T00:30", source: "manual", vendor: "Swiggy" });
+    await addCharge(db(), { amount: 5000, currency: "INR", charged_at: "2026-09-02T10:00", source: "manual", vendor: "HDFC Securities", category: "transfer:investment" });
+    const r = await addCharge(db(), { amount: 999, currency: "INR", charged_at: "2026-09-03T10:00", source: "manual", vendor: "Amazon" });
+    await markRefunded(db(), { charge_id: r.charge.id });
+    await addCharge(db(), { amount: 20, currency: "USD", charged_at: "2026-09-04T10:00", source: "manual", vendor: "Cursor" });
+    await addCharge(db(), { amount: 300, currency: "USD", charged_at: "2026-09-05T10:00", source: "manual", direction: "credit", vendor: "Upwork" });
+
+    const m = await monthlySpending(db(), { from: "2026-07", to: "2026-09" });
+    expect(m).toEqual([
+      { month: "2026-07", spent: {} },
+      { month: "2026-08", spent: { INR: "100.00" } },
+      { month: "2026-09", spent: { INR: "200.00", USD: "20.00" } },
+    ]);
   });
 });
 

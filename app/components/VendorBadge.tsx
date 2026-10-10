@@ -1,3 +1,4 @@
+import { CircleQuestionMark } from "lucide-react";
 import type { VendorIcon } from "@/lib/icons";
 
 function isLight(hex: string) {
@@ -8,15 +9,20 @@ function isLight(hex: string) {
 
 export function VendorBadge({ icon, name, small }: { icon: VendorIcon | null; name?: string | null; small?: boolean }) {
   const cls = `vb${small ? " sm" : ""}`;
-  if (!icon) return <span className={`${cls} unknown`} title="Unknown vendor" aria-label="Unknown vendor">?</span>;
+  if (!icon)
+    return (
+      <span className={`${cls} unknown`} title="Unknown vendor" aria-label="Unknown vendor">
+        <CircleQuestionMark />
+      </span>
+    );
   if (icon.kind === "mono")
     return (
-      <span className={cls} style={{ background: `hsl(${icon.hue} 38% 42%)` }} title={name ?? undefined} aria-hidden>
+      <span className={`${cls} mono`} style={{ "--h": icon.hue } as React.CSSProperties} title={name ?? undefined} aria-hidden>
         {icon.letters}
       </span>
     );
   return (
-    <span className={cls} style={{ background: `#${icon.hex}`, color: isLight(icon.hex) ? "#111" : "#fff" }} title={name ?? icon.title} aria-hidden>
+    <span className={`${cls} brand`} style={{ background: `#${icon.hex}`, color: isLight(icon.hex) ? "#111" : "#fff" }} title={name ?? icon.title} aria-hidden>
       <svg viewBox="0 0 24 24" role="img">
         <path d={icon.path} />
       </svg>
