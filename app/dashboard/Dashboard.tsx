@@ -269,6 +269,8 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
                 <UpcomingRail
                   weeks={data.weeks}
                   subs={data.subs}
+                  dueTotal={data.due_total}
+                  subsMonthly={data.subs_monthly}
                   today={today}
                   title={`Due in ${monthLabel(month)}`}
                   emptyText="No payments expected this month."
@@ -312,7 +314,15 @@ export function Dashboard({ initial, initialView, initialDay }: { initial: Month
             )}
             {isCurrent &&
               (data ? (
-                <UpcomingRail weeks={data.weeks} subs={data.subs} today={today} title="Upcoming" emptyText="Nothing due in the next 30 days." />
+                <UpcomingRail
+                  weeks={data.weeks}
+                  subs={data.subs}
+                  dueTotal={data.due_total}
+                  subsMonthly={data.subs_monthly}
+                  today={today}
+                  title="Upcoming"
+                  emptyText="Nothing due in the next 30 days."
+                />
               ) : (
                 <RailSkeleton />
               ))}

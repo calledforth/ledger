@@ -269,7 +269,23 @@ details.more[open] .chev { transform: rotate(180deg); }
 .cell .heat { height: 3px; border-radius: 99px; background: var(--one); }
 @media (max-width: 560px) { .cell { min-height: 56px; padding: 5px; } .cell .tot { display: none; } .cell .icons .vb:nth-child(n + 3), .cell .more-n { display: none; } }
 
+/* list filters */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+.chip .n { color: var(--faint); font-variant-numeric: tabular-nums; }
+.chip:hover { color: var(--fg); border-color: var(--line-strong); }
+.chip[aria-selected="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.chip[aria-selected="true"] .n { color: color-mix(in srgb, var(--bg) 65%, transparent); }
+.chip.warn:not([aria-selected="true"]) .n { color: var(--review); }
+.day .num { font-weight: 500; }
+
 /* upcoming */
+.rail { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.rail .panel { gap: 2px; }
+.rail .panel-head { margin-bottom: 6px; }
+.rail .week + .week, .rail .panel > .empty { margin-top: 8px; }
+.up.sub { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.when-rel { color: var(--fg); font-weight: 500; }
 .week { display: grid; gap: 4px; }
 .week + .week { margin-top: 6px; }
 .weekhead { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--faint); font-weight: 500; flex-wrap: wrap; padding: 4px 2px; }

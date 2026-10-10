@@ -3,6 +3,7 @@
 import { CircleAlert, CreditCard, ExternalLink, FileText, Landmark, Repeat, Smartphone, Undo2, X } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { saveCharge } from "../actions";
+import { formatMoney } from "@/lib/format";
 import type { ChargeRow } from "../dashboard/types";
 import { VendorBadge } from "./VendorBadge";
 
@@ -22,7 +23,28 @@ const REASONS: Record<string, string> = {
   flagged: "Flagged",
 };
 
-export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: string }) {
+type Filter = "all" | "out" | "in" | "review";
+const FILTERS: { key: Filter; label: string; test: (r: ChargeRow) => boolean }[] = [
+  { key: "all", label: "All", test: () => true },
+  { key: "out", label: "Spent", test: (r) => r.direction === "debit" },
+  { key: "in", label: "Received", test: (r) => r.direction === "credit" },
+  { key: "review", label: "To review", test: (r) => r.needs_review },
+];
+
+/** What a day cost: debits that count as spending (not refunded, not transfer:*), per currency. */
+function dayTotal(items: ChargeRow[]) {
+  const per = new Map<string, number>();
+  for (const r of items) {
+    if (r.direction !== "debit" || r.is_refunded || r.category?.toLowerCase().startsWith("transfer:")) continue;
+    per.set(r.currency, (per.get(r.currency) ?? 0) + Math.round(Number(r.amount) * 100));
+  }
+  return [...per.entries()].map(([c, m]) => formatMoney(m / 100, c)).join(" · ");
+}
+
+export function ChargeList({ rows: allRows, emptyText }: { rows: ChargeRow[]; emptyText: string }) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const active = FILTERS.find((f) => f.key === filter)!;
+  const rows = allRows.filter(active.test);
   const [editing, setEditing] = useState<ChargeRow | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const open = (r: ChargeRow) => {
@@ -30,7 +52,34 @@ export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: 
     dialog.current?.showModal();
   };
 
-  if (rows.length === 0) return <div className="empty">{emptyText}</div>;
+  if (allRows.length === 0) return <div className="empty">{emptyText}</div>;
+  const chips = (
+    <div className="chips" role="tablist" aria-label="Filter">
+      {FILTERS.map((f) => {
+        const n = allRows.filter(f.test).length;
+        if (f.key !== "all" && n === 0) return null;
+        return (
+          <button
+            key={f.key}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.key}
+            className={`chip${f.key === "review" ? " warn" : ""}`}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label} <span className="n">{n}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  if (rows.length === 0)
+    return (
+      <>
+        {chips}
+        <div className="empty">Nothing here.</div>
+      </>
+    );
   const days: [string, ChargeRow[]][] = [];
   for (const r of rows) {
     const last = days[days.length - 1];
@@ -40,11 +89,13 @@ export function ChargeList({ rows, emptyText }: { rows: ChargeRow[]; emptyText: 
 
   return (
     <>
+      {chips}
       <div className="rows">
         {days.map(([date, items]) => (
           <div key={date}>
             <div className="day">
               <span>{items[0].day_label}</span>
+              <span className="num">{dayTotal(items)}</span>
             </div>
             {items.map((r) => (
               <button
@@ -191,7 +242,11 @@ function EditCharge({ row, close }: { row: ChargeRow; close: () => void }) {
           <span>This was refunded (keeps it listed, leaves it out of the total)</span>
         </label>
       )}
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="actions">
         <button type="button" className="btn" onClick={close}>
           Close

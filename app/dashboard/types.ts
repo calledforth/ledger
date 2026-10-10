@@ -80,6 +80,10 @@ export type MonthData = {
   /** Bumped on every server load so the client can tell fresh data from cached data. */
   loaded_at: number;
   note: string | null;
+  /** Everything due in the upcoming window, per currency, as a label. Null for past months. */
+  due_total: string | null;
+  /** What active subscriptions cost per month (yearly ÷ 12), per currency, as a label. */
+  subs_monthly: string;
   review_count: number;
   summary: SummaryCardData[];
   expected: ExpectedData[];

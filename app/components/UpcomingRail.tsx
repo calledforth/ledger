@@ -8,18 +8,31 @@ import { VendorBadge } from "./VendorBadge";
 
 export type { SubCard, UpWeek };
 
+/** "Today", "Tomorrow", "In 5 days", or "3 days ago" for an overdue projection. */
+function relDay(date: string, today: string) {
+  const d = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  if (d === 0) return "Today";
+  if (d === 1) return "Tomorrow";
+  if (d > 1) return `In ${d} days`;
+  return d === -1 ? "Yesterday" : `${-d} days ago`;
+}
+
 export function UpcomingRail({
   weeks,
   subs,
   today,
   title,
   emptyText,
+  dueTotal,
+  subsMonthly,
 }: {
   weeks: UpWeek[] | null;
   subs: SubCard[];
   today: string;
   title: string;
   emptyText: string;
+  dueTotal?: string | null;
+  subsMonthly?: string;
 }) {
   const [sel, setSel] = useState<SubCard | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -31,14 +44,15 @@ export function UpcomingRail({
   };
 
   return (
-    <aside className="panel rail" aria-label={title}>
+    <aside className="rail" aria-label={title}>
       {weeks && (
-        <>
+        <section className="panel">
           <div className="panel-head">
             <h2>
               <CalendarClock size={17} className="h-icon" />
               {title}
             </h2>
+            {dueTotal && weeks.length > 0 && <span className="count num">{dueTotal}</span>}
           </div>
           {weeks.length === 0 && <div className="empty">{emptyText}</div>}
           {weeks.map((w) => (
@@ -65,49 +79,43 @@ export function UpcomingRail({
                     <span className="v">
                       {it.vendor} {it.plan && <span className="plan">{it.plan}</span>}
                     </span>
-                    <span className="s">{it.detail}</span>
+                    <span className="s">
+                      <span className="when-rel">{relDay(it.date, today)}</span> · {it.detail}
+                    </span>
                   </span>
                   <span className="num">{it.amount_label}</span>
                 </button>
               ))}
             </div>
           ))}
-        </>
+        </section>
       )}
 
-      <div className="panel-head" style={{ marginTop: weeks ? 14 : 0 }}>
-        <h2>
-          <Repeat size={17} className="h-icon" />
-          Subscriptions
-        </h2>
-        <span className="count">{subs.length} active</span>
-      </div>
-      {subs.length === 0 && <div className="empty">No active subscriptions yet. Ma boi adds them from receipts and mandate emails.</div>}
-      {subs.map((s) => (
-        <button key={s.id} type="button" className={`up${s.mandate ? " mandate" : ""}`} onClick={() => open(s.id)}>
-          <span className="date">
-            {s.next_label ? (
-              <>
-                <b>{s.next_label.split(" ")[0]}</b>
-                <span>{s.next_label.split(" ")[1]}</span>
-              </>
-            ) : (
-              <span>–</span>
-            )}
-          </span>
-          <VendorBadge icon={s.icon} name={s.vendor} />
-          <span className="meta">
-            <span className="v">
-              {s.vendor} <span className="plan">{s.plan}</span>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>
+            <Repeat size={17} className="h-icon" />
+            Subscriptions <span className="count">{subs.length}</span>
+          </h2>
+          {subsMonthly && <span className="count num">{subsMonthly}</span>}
+        </div>
+        {subs.length === 0 && <div className="empty">No active subscriptions yet. Ma boi adds them from receipts and mandate emails.</div>}
+        {subs.map((s) => (
+          <button key={s.id} type="button" className={`up sub${s.mandate ? " mandate" : ""}`} onClick={() => open(s.id)}>
+            <VendorBadge icon={s.icon} name={s.vendor} />
+            <span className="meta">
+              <span className="v">
+                {s.vendor} <span className="plan">{s.plan}</span>
+              </span>
+              <span className="s">
+                {s.cycle}
+                {s.ended_at ? ` · ends ${s.ended_at}` : s.next_charge_date ? ` · next ${s.next_label}` : ""}
+              </span>
             </span>
-            <span className="s">
-              {s.cycle}
-              {s.ended_at ? ` · ends ${s.ended_at}` : ""}
-            </span>
-          </span>
-          <span className="num">{s.amount_label}</span>
-        </button>
-      ))}
+            <span className="num">{s.amount_label}</span>
+          </button>
+        ))}
+      </section>
 
       <dialog ref={dialog} className="sheet" onClose={() => setSel(null)} aria-labelledby="sub-title">
         {sel && <SubSheet key={sel.id} sub={sel} today={today} close={() => dialog.current?.close()} />}
@@ -206,7 +214,11 @@ function SubSheet({ sub, today, close }: { sub: SubCard; today: string; close: (
         </label>
       </div>
       <p className="hint">Marking it cancelled only updates the tracker. It doesn&apos;t contact {sub.vendor}.</p>
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="actions">
         <button type="button" className="btn" onClick={close}>
           Keep it

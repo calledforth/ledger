@@ -12,8 +12,10 @@ import type { ChargeRow, ExpectedData, MonthData, SubCard, UpWeek } from "./type
 
 export const isMonth = (m: string | null | undefined): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
 
+const inrFirst = <T,>(e: [string, T][]) => e.sort(([a], [b]) => (a === "INR" ? -1 : b === "INR" ? 1 : a.localeCompare(b)));
+
 const totalsLabel = (t: Record<string, string>) =>
-  Object.entries(t)
+  inrFirst(Object.entries(t))
     .map(([c, a]) => formatMoney(a, c))
     .join(" · ") || "nothing due";
 
@@ -141,9 +143,22 @@ export async function loadMonth(month: string): Promise<MonthData> {
         expected.set(it.currency, e);
       }
 
+  // Totals for the rail headers: everything due in the window, and what active subscriptions cost per month.
+  const dueTotals: Record<string, string> = {};
+  for (const w of upcoming?.weeks ?? []) for (const [c, a] of Object.entries(w.totals)) dueTotals[c] = addMoney(dueTotals[c] ?? "0", a);
+  const perMonth: Record<string, number> = {};
+  for (const s of subs.subscriptions) {
+    if (s.cycle === "one-off") continue;
+    perMonth[s.currency] = (perMonth[s.currency] ?? 0) + Number(s.amount) / (s.cycle === "yearly" ? 12 : 1);
+  }
+
   return {
     month,
     today,
+    due_total: upcoming ? totalsLabel(dueTotals) : null,
+    subs_monthly: inrFirst(Object.entries(perMonth))
+      .map(([c, a]) => `${formatMoney(String(Math.round(a * 100) / 100), c)}/mo`)
+      .join(" · "),
     loaded_at: Date.now(),
     note: summary.note ?? null,
     review_count: summary.counts.needs_review,
