@@ -17,7 +17,7 @@ type CurrencySummary = {
   credits: string;
   /** Refunded debits (excluded from spent). */
   refunded: string;
-  /** Debits categorised transfer:* (to your investment account, to family/friends), excluded from spent. */
+  /** Debits categorised transfer:* (e.g. to your own investment account), excluded from spent. */
   transfers: string;
   transfers_by_category: { category: string; amount: string }[];
   debit_count: number;
@@ -30,8 +30,8 @@ type CurrencySummary = {
 };
 
 /**
- * Money moved rather than spent (category transfer:*, e.g. transfer:investment for your own broker account,
- * transfer:people for family and friends) is reported separately, not as spending.
+ * Money moved rather than spent (category transfer:*, e.g. transfer:investment for your own broker account) is
+ * reported separately, not as spending. Money sent to people (category "people") is spending.
  */
 export const isTransfer = (category: string | null | undefined) => !!category && category.toLowerCase().startsWith("transfer:");
 

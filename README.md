@@ -36,7 +36,7 @@ thin wrappers.
 | --- | --- |
 | Per-currency totals only. No FX code anywhere. Money is summed as integer minor units. | `domain/money.ts`, `domain/summary.ts` |
 | Refunded debits excluded from spending; the linked refund credit excluded from credits. Credits never count as spending. | `domain/summary.ts` |
-| Money moved rather than spent (category `transfer:*`: `transfer:investment` for the HDFC Securities broker account, `transfer:people` for family and friends) is listed and shown under the total, but not counted as spending. | `domain/summary.ts` |
+| Money moved rather than spent (category `transfer:*`, e.g. `transfer:investment` for the HDFC Securities broker account) is listed and shown under the total, but not counted as spending. Money sent to people (category `people`) does count as spending. | `domain/summary.ts` |
 | Month boundaries in IST; timestamps without an offset are IST. | `lib/time.ts` |
 | Idempotency on `hdfc_message_id` / `receipt_message_id`: partial unique indexes + `INSERT … ON CONFLICT DO NOTHING`; retries fill nulls, overwrite only with `overwrite: true`. | `domain/charges.ts` |
 | Dedup: debit, same currency, amounts within **1.00** (receipt tax rounding), `charged_at` within **±2 days**, and the existing row lacks the other message id. Exactly one candidate merges; more than one inserts with `needs_review` + returns candidates. Bank fields (channel, payee_raw, card_last4, reference, timestamp, amount) come from the alert, receipt fields (vendor, invoice_number, pdf) from the receipt. `source` keeps the original row's value; `merged_from` records what was folded in. | `domain/charges.ts` |
@@ -141,7 +141,7 @@ reference,gmail_message_id,flag_unknown_vendor,note`.
 The export format Ma boi produces is accepted as well: `datetime_ist` (e.g. `2026-09-02 10:32 (email time)`) instead
 of `date`/`time`, `event_type` (`transaction`, `mandate_registered`, `upcoming_mandate`, `autopay_declined`,
 `mandate_cancelled`) instead of a mandate value in `direction`, `account_or_card_last4` (kept only on card payments,
-since on UPI/NEFT rows it is the account), and `flag_personal_payee` (→ category `transfer:people`). Extra columns such
+since on UPI/NEFT rows it is the account), and `flag_personal_payee` (→ category `people`, counted as spending). Extra columns such
 as `subject` are ignored.
 
 - `date` + `time` are IST (`YYYY-MM-DD`, `DD-MM-YYYY`, `DD/MM/YYYY`; `HH:MM[:SS]` or `9:15 PM`).

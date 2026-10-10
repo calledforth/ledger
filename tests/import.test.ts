@@ -121,7 +121,7 @@ describe("CSV import: alert export format (datetime_ist, event_type)", () => {
     // Account last four is not a card number.
     expect(by("Example Health").card_last4).toBeNull();
     expect(by("EXAMPLETOOL").card_last4).toBe("2222");
-    expect(by("A FRIEND").category).toBe("transfer:people");
+    expect(by("A FRIEND").category).toBe("people");
     expect(by("HSL Sec").category).toBe("transfer:investment");
     expect(rows.find((c) => c.payee_raw === "OTHERTOOL IDE")!.is_refunded).toBe(true);
 
@@ -136,11 +136,9 @@ describe("CSV import: alert export format (datetime_ist, event_type)", () => {
 
     const sep = await getMonthSummary(db(), { month: "2026-09" });
     const inr = sep.currencies[0];
-    expect(inr.spent).toBe("2147.00");
-    expect(inr.transfers_by_category).toEqual([
-      { category: "transfer:investment", amount: "5000.00" },
-      { category: "transfer:people", amount: "150.00" },
-    ]);
+    // Money sent to people counts as spending; the broker transfer does not.
+    expect(inr.spent).toBe("2297.00");
+    expect(inr.transfers_by_category).toEqual([{ category: "transfer:investment", amount: "5000.00" }]);
   });
 
   it("re-importing the export changes nothing", async () => {

@@ -306,7 +306,7 @@ async function applyTransaction(db: Db, row: Row, at: Date, direction: "debit" |
     payee_raw: row.vendor_raw,
     card_last4: last4.value,
     reference: row.reference,
-    category: !alias?.category && personal ? "transfer:people" : undefined,
+    category: !alias?.category && personal ? "people" : undefined,
     notes: row.note,
     needs_review: flagged || undefined,
     review_reason: flagged ? "unknown_vendor" : undefined,
