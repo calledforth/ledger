@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Ledger",
+    "slug": "ledger-mobile",
+    "scheme": "ledger",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "supportsTablet": false, "bundleIdentifier": "in.cletus.ledger" },
+    "android": { "package": "in.cletus.ledger" },
+    "plugins": ["expo-router"]
+  }
+}

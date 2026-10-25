@@ -10,6 +10,16 @@ HTTP, stateless) · Vercel Blob for invoice PDFs · Vitest against a real Postgr
 **Why Drizzle:** its migrations are plain SQL files committed in `drizzle/`, it adds no engine binary to serverless
 functions, and it exposes `ON CONFLICT ... WHERE` for the partial unique indexes idempotency depends on.
 
+## Mobile (design)
+
+A future Expo app will live in [`mobile/`](./mobile). This pass is **mocks only** — six visual directions, 48 screens, not wired to Neon.
+
+```bash
+npm run mocks
+```
+
+Open [http://localhost:4173](http://localhost:4173) and read [`mobile/mocks/DIRECTIONS.md`](./mobile/mocks/DIRECTIONS.md). The Next.js dashboard below is unchanged.
+
 ## The dashboard
 
 One page, two views, behind a password login:

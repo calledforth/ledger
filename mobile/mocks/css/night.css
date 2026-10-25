@@ -1,0 +1,32 @@
+.night { background: #070707; color: #efe8d8; font-family: "Fraunces", "Iowan Old Style", Georgia, serif; }
+.night .scroll { padding: 2px 22px 28px; }
+.night .sans { font-family: "Geist", "Inter", system-ui, sans-serif; }
+.night .mark { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #c9a24a; font-family: "Geist", sans-serif; }
+.night h1 { font-weight: 400; font-size: 36px; letter-spacing: -0.03em; margin: 8px 0 0; }
+.night .gold-num { font-size: 50px; letter-spacing: -0.04em; color: #e8d7a8; line-height: 1; margin: 16px 0 10px; }
+.night .said { font-size: 17px; line-height: 1.45; color: #d8d0c0; max-width: 30ch; }
+.night .metal {
+  margin: 22px 0;
+  padding: 14px 0;
+  border-top: 1px solid #2a2418;
+  border-bottom: 1px solid #2a2418;
+  font-size: 15px;
+}
+.night .metal b { color: #c9a24a; font-weight: 500; }
+.night .row { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #161616; font-family: "Geist", sans-serif; font-size: 14px; }
+.night .row .who { font-family: "Fraunces", serif; font-size: 17px; }
+.night .row small { display: block; color: #8a8478; font-size: 11px; font-family: "Geist", sans-serif; }
+.night .tick { width: 7px; height: 7px; border-radius: 50%; background: #c9a24a; display: inline-block; margin-right: 8px; }
+.night .months { display: flex; gap: 8px; overflow: auto; padding-bottom: 8px; }
+.night .months a { min-width: 64px; text-align: center; padding: 10px 8px; border: 1px solid #2a2418; border-radius: 12px; font-family: "Geist", sans-serif; font-size: 12px; color: #c8c2b6; }
+.night .months a.on { border-color: #c9a24a; color: #e8d7a8; }
+.night .empty { padding: 56px 8px; }
+.night .empty h2 { font-weight: 400; font-size: 30px; }
+.night .line { height: 1px; background: linear-gradient(90deg, transparent, #c9a24a, transparent); margin: 28px 0; }
+.night .tabs { font-family: "Geist", sans-serif; border-top-color: #1a1a1a; }
+.night .spread { display: flex; gap: 12px; }
+.night .spread > * { min-width: 78%; }
+.night .dim { opacity: .35; }
+.night .spark { display: flex; align-items: flex-end; gap: 8px; height: 90px; margin: 18px 0; }
+.night .spark i { flex: 1; background: #c9a24a; border-radius: 2px; opacity: .85; }
+.night .spark i.loud { background: #e8d7a8; }

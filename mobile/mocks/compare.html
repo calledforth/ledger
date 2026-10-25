@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ledger mobile · compare</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,640&family=Fraunces:opsz,wght@9..144,400&family=IBM+Plex+Mono:wght@400;600&family=Instrument+Sans:wght@400;560;620&family=Inter:wght@400;520;560;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/base.css" />
+    <link rel="stylesheet" href="./css/quiet.css" />
+    <link rel="stylesheet" href="./css/letter.css" />
+    <link rel="stylesheet" href="./css/deck.css" />
+    <link rel="stylesheet" href="./css/receipt.css" />
+    <link rel="stylesheet" href="./css/twin.css" />
+    <link rel="stylesheet" href="./css/night.css" />
+    <style>
+      .cmp { display: flex; flex-wrap: wrap; gap: 36px; justify-content: center; padding: 36px 16px 80px; }
+      .pick { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      select { background: #16161a; color: #ece8e1; border: 1px solid #2a2a30; padding: 8px 10px; border-radius: 10px; font: 14px/1 Inter, sans-serif; }
+    </style>
+  </head>
+  <body class="studio">
+    <div class="wrap">
+      <a class="back" href="./index.html">← Gallery</a>
+      <h1 class="hero" style="font-size:42px">Same month,<br />two voices.</h1>
+      <div class="pick">
+        <label>Left <select id="a"></select></label>
+        <label>Right <select id="b"></select></label>
+        <label>Screen <select id="s"></select></label>
+      </div>
+      <div class="cmp" id="stage"></div>
+    </div>
+    <script type="module">
+      import { DIRECTION_META, SCREENS, CURRENT_MONTH } from "./js/data.js";
+      import { monthCtx, resolveMonth, screenFor, statusBar, tabs } from "./js/engine.js";
+      import { RENDERERS, THEMES } from "./js/registry.js";
+
+      const a = document.querySelector("#a");
+      const b = document.querySelector("#b");
+      const s = document.querySelector("#s");
+      a.innerHTML = DIRECTION_META.map((d) => `<option value="${d.id}">${d.name}</option>`).join("");
+      b.innerHTML = DIRECTION_META.map((d) => `<option value="${d.id}">${d.name}</option>`).join("");
+      s.innerHTML = SCREENS.map((x) => `<option value="${x.id}">${x.label}</option>`).join("");
+      a.value = "quiet";
+      b.value = "letter";
+
+      function drawOne(dir, screen) {
+        const monthId = resolveMonth(screen, CURRENT_MONTH);
+        const view = screenFor(screen, monthId);
+        const ctx = { ...monthCtx(monthId), dir, screen };
+        const theme = THEMES[dir];
+        const which = ["empty", "edge", "category", "analysis", "history", "switcher"].includes(screen) ? screen : view;
+        const inner = RENDERERS[dir](which, ctx);
+        return `<div><div class="phone"><div class="phone-glass ${theme.className}">${statusBar(theme.lightBar)}<div class="screen">${inner}${tabs(dir, screen, monthId)}</div></div></div><p style="text-align:center;color:#9a948a">${DIRECTION_META.find((d) => d.id === dir).name}</p></div>`;
+      }
+      function paint() {
+        document.querySelector("#stage").innerHTML = drawOne(a.value, s.value) + drawOne(b.value, s.value);
+      }
+      a.onchange = b.onchange = s.onchange = paint;
+      paint();
+    </script>
+  </body>
+</html>
