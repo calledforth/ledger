@@ -1,0 +1,10 @@
+{
+  "name": "ledger-mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "echo \"Stub only. Serve mocks: npx --yes serve mocks -p 4173\"",
+    "mocks": "npx --yes serve mocks -p 4173"
+  }
+}

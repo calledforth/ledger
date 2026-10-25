@@ -1,0 +1,39 @@
+.letter { background: #efe6d4; color: #1b1710; font-family: "Newsreader", "Iowan Old Style", Georgia, serif; }
+.letter .scroll { padding: 4px 26px 40px; }
+.letter .mast {
+  border-bottom: 2px solid #1b1710;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+}
+.letter .mast .vol { font-family: "Geist", sans-serif; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; }
+.letter .mast h1 { font-size: 48px; font-weight: 500; letter-spacing: -0.03em; margin: 4px 0 0; line-height: .9; }
+.letter .byline { font-family: "Geist", sans-serif; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #5a5346; margin: 10px 0 16px; }
+.letter .lead { font-size: 20px; line-height: 1.35; font-weight: 400; }
+.letter .pull {
+  margin: 22px 0;
+  padding: 8px 0 8px 16px;
+  border-left: 1px solid #1b1710;
+  font-size: 28px; letter-spacing: -0.03em;
+}
+.letter .pull small { display: block; font-family: "Geist", sans-serif; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+.letter p.body { font-size: 16px; line-height: 1.5; color: #2c261c; }
+.letter .index { margin-top: 28px; border-top: 1px solid #1b1710; }
+.letter .index h3 { font-family: "Geist", sans-serif; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; margin: 14px 0; }
+.letter .ix { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted #8a7d66; font-size: 16px; }
+.letter .folio { font-family: "Geist", sans-serif; font-variant-numeric: tabular-nums; font-size: 13px; }
+.letter .classified { font-family: "Geist", sans-serif; }
+.letter .classified .row { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; padding: 9px 0; border-bottom: 1px solid #e0d4bc; font-size: 13px; }
+.letter .classified .row b { font-family: "Newsreader", serif; font-size: 16px; font-weight: 500; }
+.letter .rule { height: 2px; background: #1b1710; margin: 8px 0; }
+.letter .rule.thin { height: 1px; }
+.letter .issue-rail { display: flex; gap: 0; border-top: 1px solid #1b1710; border-bottom: 1px solid #1b1710; }
+.letter .issue-rail a { flex: 1; text-align: center; padding: 8px 0; font-family: "Geist", sans-serif; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.letter .issue-rail a.on { background: #1b1710; color: #efe6d4; }
+.letter .empty-col { text-align: center; padding: 64px 10px; }
+.letter .empty-col h2 { font-weight: 400; font-size: 34px; }
+.letter .tabs { font-family: "Geist", sans-serif; border-top-color: #1b1710; }
+.letter .spread { display: flex; gap: 10px; }
+.letter .spread > article { min-width: 76%; background: #efe6d4; }
+.letter .spread > aside { min-width: 60%; opacity: .45; }
+.letter .essay h2 { font-size: 26px; font-weight: 500; margin: 0 0 10px; }
+.letter .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }

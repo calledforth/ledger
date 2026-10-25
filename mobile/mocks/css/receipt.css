@@ -1,0 +1,36 @@
+.receipt { background: #161412; color: #efe6d2; font-family: "IBM Plex Mono", "ui-monospace", monospace; }
+.receipt .scroll { padding: 8px 16px 28px; }
+.receipt .paper {
+  background: #f3ead3;
+  color: #1c1812;
+  border-radius: 2px;
+  padding: 22px 16px 28px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.4);
+  position: relative;
+}
+.receipt .paper::before, .receipt .paper::after {
+  content: "";
+  position: absolute; left: 0; right: 0; height: 10px;
+  background: radial-gradient(circle at 6px 0, transparent 6px, #f3ead3 7px) repeat-x;
+  background-size: 12px 10px;
+}
+.receipt .paper::before { top: -10px; }
+.receipt .paper::after { bottom: -10px; transform: rotate(180deg); }
+.receipt .hdr { text-align: center; }
+.receipt .hdr .brand { letter-spacing: .28em; font-size: 11px; }
+.receipt .hdr h1 { font-size: 16px; font-weight: 600; margin: 8px 0 2px; }
+.receipt .cut { border: 0; border-top: 1px dashed #1c1812; margin: 12px 0; }
+.receipt .line { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; padding: 3px 0; }
+.receipt .line.total { font-size: 14px; font-weight: 700; padding-top: 6px; }
+.receipt .center { text-align: center; font-size: 11px; }
+.receipt .tiny { font-size: 10px; color: #4a4336; }
+.receipt .nav-rec { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #9a9182; margin: 10px 2px; }
+.receipt .void { text-align: center; padding: 40px 8px; }
+.receipt .void h2 { letter-spacing: .2em; font-size: 18px; }
+.receipt .note { font-size: 11px; line-height: 1.45; }
+.receipt .tabs { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; border-top-color: #2a2620; }
+.receipt .pair { display: flex; gap: 10px; }
+.receipt .pair .paper { min-width: 78%; }
+.receipt .pair .ghost { min-width: 64%; opacity: .45; transform: scale(.96); }
+.receipt .gold { color: #8a6a1e; }
+.receipt .yr-tape .line span:first-child { letter-spacing: 0; }

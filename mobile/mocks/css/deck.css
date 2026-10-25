@@ -1,0 +1,49 @@
+.deck { background: #141416; color: #f4efe8; font-family: "DM Sans", "Geist", system-ui, sans-serif; }
+.deck .scroll { padding: 6px 18px 24px; }
+.deck .top { display: flex; justify-content: space-between; align-items: center; color: #9a958d; font-size: 13px; }
+.deck .card {
+  background: linear-gradient(180deg, #2a2420 0%, #1a1715 100%);
+  border-radius: 28px;
+  padding: 22px 20px 20px;
+  margin: 16px 0;
+  min-height: 280px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.35);
+  position: relative;
+  overflow: hidden;
+}
+.deck .card::after {
+  content: "";
+  position: absolute; right: -40px; top: -40px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle, #e85d4c55, transparent 70%);
+}
+.deck .card .mo { font-size: 15px; color: #d8cfc4; }
+.deck .card .big { font-size: 46px; font-weight: 640; letter-spacing: -0.05em; margin: 10px 0 6px; }
+.deck .card .said { font-size: 15px; line-height: 1.4; color: #ddd6cc; max-width: 28ch; position: relative; }
+.deck .dots { display: flex; gap: 6px; justify-content: center; margin: 4px 0 14px; }
+.deck .dots i { width: 6px; height: 6px; border-radius: 99px; background: #3a3a3e; }
+.deck .dots i.on { width: 16px; background: #e85d4c; }
+.deck .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.deck .pill { padding: 8px 10px; border-radius: 999px; background: #1f1f23; font-size: 12px; color: #e8e2da; }
+.deck .pill b { margin-left: 6px; }
+.deck .up { text-align: center; color: #8a857d; font-size: 12px; margin-top: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.deck .list .row { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid #26262b; }
+.deck .av { width: 36px; height: 36px; border-radius: 12px; background: #e85d4c; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+.deck .who { flex: 1; }
+.deck .who small { display: block; color: #8a857d; font-size: 12px; }
+.deck .sheet {
+  background: #1c1c20;
+  border-radius: 24px 24px 0 0;
+  padding: 16px 16px 8px;
+  margin: 12px -18px -8px;
+}
+.deck .handle { width: 36px; height: 4px; background: #3a3a40; border-radius: 99px; margin: 0 auto 12px; }
+.deck .stack { display: flex; gap: 12px; align-items: stretch; }
+.deck .stack .card { min-width: 78%; }
+.deck .stack .ghost { min-width: 70%; opacity: .4; transform: scale(.94); }
+.deck .yr { display: grid; gap: 10px; }
+.deck .yr .m { background: #1c1c20; border-radius: 18px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+.deck .yr .m.on { outline: 1px solid #e85d4c; }
+.deck .empty-card { display: grid; place-items: center; text-align: center; min-height: 320px; color: #c8c2b8; }
+.deck .tabs { border-top-color: #26262b; }
+.deck .coral { color: #e85d4c; }
