@@ -5,7 +5,7 @@ Design exploration only. These mocks are static HTML so they can be opened witho
 **Open the gallery:** serve this folder and open `index.html`.
 
 ```bash
-npx --yes serve mobile/mocks -p 4173
+npm run mocks
 ```
 
 Then: [http://localhost:4173](http://localhost:4173). Click any phone to play that screen. [compare.html](./compare.html) puts two directions on the same month.

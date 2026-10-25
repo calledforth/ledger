@@ -1,8 +1,8 @@
 .quiet { background: #f6f6f4; color: #111; font-family: "Geist", "Inter", system-ui, sans-serif; }
-.quiet .scroll { padding-top: 4px; }
-.quiet .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #6b6b66; }
-.quiet .month-row { display: flex; align-items: baseline; justify-content: space-between; margin: 6px 0 4px; }
-.quiet h1 { font-size: 34px; font-weight: 520; letter-spacing: -0.04em; margin: 0; }
+.quiet .scroll { padding-top: 10px; }
+.quiet .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #6b6b66; }
+.quiet .month-row { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 0 2px; gap: 12px; }
+.quiet h1 { font-size: 28px; font-weight: 520; letter-spacing: -0.04em; margin: 0; }
 .quiet .hero-num { font-size: 52px; font-weight: 530; letter-spacing: -0.055em; line-height: .95; margin: 18px 0 8px; }
 .quiet .sub { color: #5c5c57; font-size: 14px; }
 .quiet .prose { font-size: 16.5px; line-height: 1.45; color: #2a2a28; margin: 18px 0 22px; max-width: 32ch; }

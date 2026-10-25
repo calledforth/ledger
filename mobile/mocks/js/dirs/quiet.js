@@ -103,25 +103,25 @@ export function render(screen, ctx) {
   }
 
   const swipe = screen === "switcher";
-  const hero = `
+  const hero = (m, c) => `
     <section>
-      <div class="eyebrow">${ctx.isCurrent ? "Spent so far" : month.empty ? "Nothing yet" : "Spent"}</div>
+      <div class="eyebrow">${m.id === "2026-10" ? "Spent so far" : m.empty ? "Nothing yet" : "Spent"}</div>
       <div class="month-row">
-        <h1>${month.short}</h1>
+        <h1>${m.label.replace(" 2026", "")}</h1>
         <div class="switch">
           <a class="on" href="#">INR</a>
-          <a href="${href({ dir, screen: "history", month: cur })}">USD ${usd(month.usd.spent)}</a>
+          <a href="${href({ dir, screen: "history", month: m.id })}">USD ${usd(m.usd.spent)}</a>
         </div>
       </div>
-      <div class="hero-num num">${inr(month.inr.spent)}</div>
-      <div class="sub">USD ${usd(month.usd.spent)} kept separate · ${inr(month.inr.transfers)} moved to gold</div>
-      ${month.note ? `<p class="prose">${month.note}</p>` : ""}
-      <div class="cats">${cats(month, "INR")}</div>
-      <div class="peek"><span>← ${prev.short}</span><span>${next.short} →</span></div>
+      <div class="hero-num num">${inr(m.inr.spent)}</div>
+      <div class="sub">USD ${usd(m.usd.spent)} kept separate${m.inr.transfers ? ` · ${inr(m.inr.transfers)} moved to gold` : ""}</div>
+      ${m.note ? `<p class="prose">${m.note}</p>` : ""}
+      <div class="cats">${cats(m, "INR")}</div>
+      <div class="peek"><span>← ${c.prev.short}</span><span>${c.next.short} →</span></div>
     </section>`;
 
   if (swipe) {
-    return `<div class="scroll"><div class="mid-swipe" data-swipe>${hero}<section class="ghost">${hero}</section></div></div>`;
+    return `<div class="scroll"><div class="mid-swipe" data-swipe>${hero(month, ctx)}${hero(next, { prev: month, next })}</div></div>`;
   }
-  return `<div class="scroll" data-swipe>${hero}</div>`;
+  return `<div class="scroll" data-swipe>${hero(month, ctx)}</div>`;
 }

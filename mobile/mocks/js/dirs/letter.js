@@ -78,7 +78,13 @@ export function render(screen, ctx) {
     </article>`;
 
   if (screen === "switcher") {
-    return `<div class="scroll"><div class="spread" data-swipe>${article}<aside>${article}</aside></div></div>`;
+    const nextIssue = `
+      <aside>
+        <div class="mast"><div class="vol">Next</div><h1>${next.short}.</h1></div>
+        <p class="lead">${next.note ?? "Still blank."}</p>
+        <div class="pull">${inr(next.inr.spent)}<small>INR</small></div>
+      </aside>`;
+    return `<div class="scroll"><div class="spread" data-swipe>${article}${nextIssue}</div></div>`;
   }
   return `<div class="scroll" data-swipe>${article}</div>`;
 }

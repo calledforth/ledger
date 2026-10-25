@@ -5,7 +5,7 @@ This folder is the future Expo app. It is a stub.
 **Look at the mocks first.** They are the deliverable of this pass:
 
 ```bash
-npx --yes serve mobile/mocks -p 4173
+npm run mocks
 ```
 
 Open [http://localhost:4173](http://localhost:4173). Read [`mocks/DIRECTIONS.md`](./mocks/DIRECTIONS.md).

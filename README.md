@@ -15,7 +15,7 @@ functions, and it exposes `ON CONFLICT ... WHERE` for the partial unique indexes
 A future Expo app will live in [`mobile/`](./mobile). This pass is **mocks only** — six visual directions, 48 screens, not wired to Neon.
 
 ```bash
-npx --yes serve mobile/mocks -p 4173
+npm run mocks
 ```
 
 Open [http://localhost:4173](http://localhost:4173) and read [`mobile/mocks/DIRECTIONS.md`](./mobile/mocks/DIRECTIONS.md). The Next.js dashboard below is unchanged.

@@ -1,5 +1,5 @@
 .deck { background: #141416; color: #f4efe8; font-family: "DM Sans", "Geist", system-ui, sans-serif; }
-.deck .scroll { padding: 6px 18px 24px; }
+.deck .scroll { padding: 12px 18px 24px; }
 .deck .top { display: flex; justify-content: space-between; align-items: center; color: #9a958d; font-size: 13px; }
 .deck .card {
   background: linear-gradient(180deg, #2a2420 0%, #1a1715 100%);

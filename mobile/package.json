@@ -4,7 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "echo \"Stub only. Serve mocks: npx --yes serve mocks -p 4173\"",
-    "mocks": "npx --yes serve mocks -p 4173"
+    "start": "echo \"Stub only. From repo root: npm run mocks\"",
+    "mocks": "python3 -m http.server 4173 --directory mocks"
   }
 }

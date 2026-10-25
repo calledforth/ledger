@@ -6,9 +6,10 @@
   border-radius: 20px;
   padding: 16px 16px 14px;
   margin: 10px 0;
+  display: block;
 }
-.twin .inr { background: #eef0ff; color: #1b1f4a; }
-.twin .usd { background: #e6f4f1; color: #12362f; }
+.twin .inr { background: #c5ccff; color: #15183a; }
+.twin .usd { background: #b6ead8; color: #0d3329; }
 .twin .pane .cur { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 .twin .pane .big { font-size: 36px; letter-spacing: -0.045em; font-weight: 620; margin: 4px 0; }
 .twin .pane p { margin: 0; font-size: 13.5px; line-height: 1.4; opacity: .85; }
