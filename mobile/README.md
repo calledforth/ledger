@@ -9,11 +9,13 @@ React Native, talking to the deployed web app's JSON API. The web app is unchang
 ```bash
 cd mobile
 npm install
-cp .env.example .env          # EXPO_PUBLIC_API_URL=https://<your-ledger>.vercel.app
+cp .env.example .env          # optional: EXPO_PUBLIC_API_URL=https://<your-ledger>.vercel.app
 npx expo start                # scan the QR with Expo Go, or press i / a for a simulator
 ```
 
-Sign in with the dashboard password. The app keeps the session token in the device keychain (expo-secure-store)
+The sign-in screen asks for the server address (your Vercel URL) and the dashboard password. The address is kept on
+the device, so a prebuilt APK works without any `.env`; `EXPO_PUBLIC_API_URL` only pre-fills it. Nothing secret
+lives in the app: the server's secrets (database, MCP token, password hash, session secret) stay in Vercel. The app keeps the session token in the device keychain (expo-secure-store)
 and sends it as `Authorization: Bearer …`. Thirty days later it asks again, same as the web cookie.
 
 Build for a device with EAS (`npx eas build`) or `npx expo run:ios` / `run:android` once native tooling is set up.

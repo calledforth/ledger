@@ -1,15 +1,29 @@
 import * as SecureStore from "expo-secure-store";
 import type { MonthData } from "./types";
 
-/** Where the web app lives. Set EXPO_PUBLIC_API_URL in .env (see .env.example). */
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+/**
+ * Where the web app lives. EXPO_PUBLIC_API_URL (see .env.example) is the build-time default; the sign-in screen lets
+ * you type another, kept on the device, so one build works against any deployment.
+ */
+export const DEFAULT_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+let apiUrl = DEFAULT_API_URL;
+export const apiUrlNow = () => apiUrl;
 
 const TOKEN_KEY = "ledger_session_token";
+const URL_KEY = "ledger_api_url";
 let token: string | null = null;
 
 export async function loadToken(): Promise<string | null> {
-  token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const [t, u] = await Promise.all([SecureStore.getItemAsync(TOKEN_KEY), SecureStore.getItemAsync(URL_KEY)]);
+  if (u) apiUrl = u;
+  token = t;
   return token;
+}
+
+export async function setApiUrl(url: string) {
+  apiUrl = url.trim().replace(/\/$/, "");
+  if (apiUrl && !/^https?:\/\//.test(apiUrl)) apiUrl = `https://${apiUrl}`;
+  await SecureStore.setItemAsync(URL_KEY, apiUrl);
 }
 
 export async function clearToken() {
@@ -27,8 +41,8 @@ export class ApiError extends Error {
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!API_URL) throw new ApiError(0, "EXPO_PUBLIC_API_URL is not set");
-  const res = await fetch(`${API_URL}${path}`, {
+  if (!apiUrl) throw new ApiError(0, "Set the server address on the sign-in screen");
+  const res = await fetch(`${apiUrl}${path}`, {
     ...init,
     headers: { accept: "application/json", "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) },
   });

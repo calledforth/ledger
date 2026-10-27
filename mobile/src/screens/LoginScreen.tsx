@@ -1,20 +1,22 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, API_URL } from "../api";
+import { api, apiUrlNow, setApiUrl } from "../api";
 import { colors, font } from "../theme";
 
 export function LoginScreen({ onDone }: { onDone: () => void }) {
   const insets = useSafeAreaInsets();
+  const [server, setServer] = useState(apiUrlNow());
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!password || busy) return;
+    if (!password || !server.trim() || busy) return;
     setBusy(true);
     setError(null);
     try {
+      await setApiUrl(server);
       await api.login(password);
       onDone();
     } catch (e) {
@@ -27,17 +29,25 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.screen, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 30 }]}>
       <Text style={styles.brand}>Ledger</Text>
-      <Text style={styles.tag}>
-        Your charges, in words.{"\n"}
-        <Text style={{ color: colors.faint }}>{API_URL || "EXPO_PUBLIC_API_URL is not set"}</Text>
-      </Text>
+      <Text style={styles.tag}>Your charges, in words.</Text>
       <View style={{ marginTop: "auto" }}>
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>Server</Text>
+        <TextInput
+          value={server}
+          onChangeText={setServer}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          placeholder="https://your-ledger.vercel.app"
+          placeholderTextColor={colors.faint}
+          style={styles.input}
+        />
+        <Text style={[styles.label, { marginTop: 16 }]}>Password</Text>
         <TextInput
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          autoFocus
+          autoFocus={!!server}
           autoCapitalize="none"
           autoComplete="current-password"
           returnKeyType="go"
@@ -47,7 +57,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
           style={styles.input}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Pressable onPress={submit} disabled={busy || !password} style={[styles.button, (busy || !password) && { opacity: 0.5 }]}>
+        <Pressable onPress={submit} disabled={busy || !password || !server.trim()} style={[styles.button, (busy || !password || !server.trim()) && { opacity: 0.5 }]}>
           <Text style={styles.buttonText}>{busy ? "Checking…" : "Sign in"}</Text>
         </Pressable>
       </View>
