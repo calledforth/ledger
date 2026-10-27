@@ -137,7 +137,7 @@ svg.lucide { flex: none; }
 @media (prefers-reduced-motion: no-preference) { .spin.on { animation: rot 0.8s linear infinite; } }
 @keyframes rot { to { transform: rotate(360deg); } }
 
-.note { background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; display: flex; gap: 10px; align-items: baseline; margin: 0; }
+.note { background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; display: flex; gap: 10px; align-items: baseline; margin: 0; white-space: pre-line; }
 .note-who { display: inline-flex; gap: 5px; align-items: center; font-weight: 600; color: var(--accent); flex: none; align-self: center; }
 
 /* summary */

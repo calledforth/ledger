@@ -174,18 +174,21 @@ export async function monthlySpending(db: Db, input: { from: string; to: string 
   return [...out.entries()].map(([month, per]) => ({ month, spent: Object.fromEntries([...per.entries()].map(([c, v]) => [c, fromMinor(v)])) as Record<string, string> }));
 }
 
+/** The assistant's observations for a month: a few short lines, newline-separated, at most 1000 characters. */
+export const MONTH_NOTE_MAX = 1000;
+
 export async function setMonthNote(db: Db, input: { month: string; note: string }) {
   try {
     assertMonth(input.month);
   } catch (e) {
     throw new DomainError("invalid_input", (e as Error).message);
   }
-  const text = input.note.trim();
+  const text = input.note.replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean).join("\n");
   if (!text) {
     await db.delete(monthNotes).where(eq(monthNotes.month, input.month));
     return { status: "cleared", month: input.month };
   }
-  if (text.length > 500) throw new DomainError("invalid_input", "note must be 500 characters or fewer");
+  if (text.length > MONTH_NOTE_MAX) throw new DomainError("invalid_input", `note must be ${MONTH_NOTE_MAX} characters or fewer`);
   await db
     .insert(monthNotes)
     .values({ month: input.month, note: text })

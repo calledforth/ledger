@@ -2,7 +2,13 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // Route handlers import app/dashboard/load, which carries Next's "server-only" marker; tests are server code.
+      "server-only": fileURLToPath(new URL("./tests/server-only.ts", import.meta.url)),
+    },
+  },
   test: {
     environment: "node",
     globalSetup: ["./tests/global-setup.ts"],

@@ -10,6 +10,9 @@ import { aliasJson, chargeJson } from "./serialize";
  * UPI handles ("@okicici", "@rxairtel") are ignored when matching, so a bank handle never names a vendor.
  */
 export const matchableSql = (col: unknown) => sql`regexp_replace(${col}, '@[^\s|]+', '', 'g')`;
+
+/** The pattern to save when the owner says "this payee is X": the raw payee text minus UPI handles, which never match. */
+export const aliasPatternFor = (payeeRaw: string) => payeeRaw.replace(/@[^\s|]+/g, "").trim();
 export async function resolveVendor(
   db: Db,
   payeeRaw: string | null | undefined,
