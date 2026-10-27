@@ -1,3 +1,4 @@
+import type { MonthStory } from "@/domain/narrative";
 import type { VendorIcon } from "@/lib/icons";
 
 export type ChargeRow = {
@@ -64,7 +65,8 @@ export type SummaryCardData = {
   transfers: string;
   transfers_by_category: { category: string; amount: string }[];
   credits_by_source: { vendor: string; channel: string | null; amount: string }[];
-  daily: { day: number; cumulative: string }[];
+  by_category: { category: string; amount: string }[];
+  daily: { day: number; amount: string; cumulative: string }[];
   top_vendors: { vendor: string; amount: string; count: number; icon: VendorIcon | null }[];
 };
 
@@ -79,7 +81,10 @@ export type MonthData = {
   today: string;
   /** Bumped on every server load so the client can tell fresh data from cached data. */
   loaded_at: number;
+  /** The assistant's own observations for the month (set_month_note), one per line. */
   note: string | null;
+  /** The month in words, computed from the numbers. See domain/narrative. */
+  story: MonthStory;
   /** Everything due in the upcoming window, per currency, as a label. Null for past months. */
   due_total: string | null;
   /** What active subscriptions cost per month (yearly ÷ 12), per currency, as a label. */

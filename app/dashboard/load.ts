@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "@/db/client";
 import { listCharges } from "@/domain/charges";
 import { addMoney } from "@/domain/money";
+import { monthStory } from "@/domain/narrative";
 import { listSubscriptions } from "@/domain/subscriptions";
 import { getMonthSummary, monthlySpending } from "@/domain/summary";
 import { upcomingPayments, type UpcomingItem } from "@/domain/upcoming";
@@ -152,9 +153,19 @@ export async function loadMonth(month: string): Promise<MonthData> {
     perMonth[s.currency] = (perMonth[s.currency] ?? 0) + Number(s.amount) / (s.cycle === "yearly" ? 12 : 1);
   }
 
+  const previous = history.find((h) => h.month === shiftMonth(month, -1))?.spent ?? {};
+  const story = monthStory({
+    month,
+    today,
+    currencies: summary.currencies,
+    rows: rows.map((r) => ({ id: r.id, vendor: r.vendor, amount: r.amount, currency: r.currency, date: r.date, direction: r.direction, category: r.category, is_refunded: r.is_refunded })),
+    previous,
+  });
+
   return {
     month,
     today,
+    story,
     due_total: upcoming ? totalsLabel(dueTotals) : null,
     subs_monthly: inrFirst(Object.entries(perMonth))
       .map(([c, a]) => `${formatMoney(String(Math.round(a * 100) / 100), c)}/mo`)
@@ -172,7 +183,8 @@ export async function loadMonth(month: string): Promise<MonthData> {
       transfers: c.transfers,
       transfers_by_category: c.transfers_by_category,
       credits_by_source: c.credits_by_source.map((s) => ({ vendor: s.vendor, channel: s.channel, amount: s.amount })),
-      daily: c.daily.map((d) => ({ day: d.day, cumulative: d.cumulative })),
+      by_category: c.by_category,
+      daily: c.daily.map((d) => ({ day: d.day, amount: d.amount, cumulative: d.cumulative })),
       top_vendors: c.top_vendors.map((v) => ({ ...v, icon: vendorIcon(v.vendor === "Unknown" ? null : v.vendor) })),
     })),
     expected: [...expected.values()],

@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Ledger",
+    "slug": "ledger",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ledger",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#121212",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.ledger.mobile"
+    },
+    "android": {
+      "package": "app.ledger.mobile",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      "expo-asset"
+    ]
+  }
+}

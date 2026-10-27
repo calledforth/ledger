@@ -7,7 +7,9 @@ import { DomainError } from "@/domain/errors";
 import { decodeCsvInput, importCsv } from "@/domain/importCsv";
 import { attachInvoice } from "@/domain/invoices";
 import { cancelSubscription, listSubscriptions, upsertSubscription } from "@/domain/subscriptions";
-import { getMonthSummary, setMonthNote } from "@/domain/summary";
+import { monthStory, storyText } from "@/domain/narrative";
+import { getMonthSummary, MONTH_NOTE_MAX, monthlySpending, setMonthNote } from "@/domain/summary";
+import { istDate, shiftMonth, todayIst } from "@/lib/time";
 import { addUpcomingEvent, setUpcomingEventStatus, upcomingPayments } from "@/domain/upcoming";
 
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "YYYY-MM").describe("Calendar month in IST, YYYY-MM");
@@ -310,10 +312,23 @@ export function createMcpServer() {
       description:
         "Summary for an IST month (default current): per-currency spending (refunded charges excluded), split into subscriptions vs one-time, " +
         "per-currency credits (refund credits excluded) with where they came from, counts, needs_review and refunded counts, top vendors and categories " +
-        "per currency, and the month note. Currencies are never combined.",
+        "per currency, the month note, and `story`: the month in words as the app shows it (received, moved to investing, subscriptions, the rest; " +
+        "biggest expense, highest day, projection, vs last month). Currencies are never combined.",
       inputSchema: { month: month.optional() },
     },
-    handler((db, a) => getMonthSummary(db, a)),
+    handler(async (db, a) => {
+      const summary = await getMonthSummary(db, a);
+      const today = todayIst();
+      const [prev, page] = await Promise.all([monthlySpending(db, { from: shiftMonth(summary.month, -1), to: shiftMonth(summary.month, -1) }), listCharges(db, { month: summary.month, limit: 500 })]);
+      const story = monthStory({
+        month: summary.month,
+        today,
+        currencies: summary.currencies,
+        rows: page.charges.map((c) => ({ id: c.id, vendor: c.vendor, amount: c.amount, currency: c.currency, date: istDate(new Date(c.charged_at)), direction: c.direction, category: c.category, is_refunded: c.is_refunded })),
+        previous: prev[0]?.spent ?? {},
+      });
+      return { ...summary, story: { ...story, text: storyText(story) } };
+    }),
   );
 
   server.registerTool(
@@ -321,9 +336,11 @@ export function createMcpServer() {
     {
       title: "Set the month note",
       description:
-        "Write the short note shown above the dashboard charts for a month (max 500 characters), e.g. a one-line takeaway about the month's spending. " +
-        "An empty note clears it. Overwrites the previous note for that month.",
-      inputSchema: { month, note: z.string().max(500) },
+        "Your observations for a month, shown on the dashboard and the mobile home under the computed summary: one to three short lines, newline-separated " +
+        `(max ${MONTH_NOTE_MAX} characters). Say what the numbers cannot: why a month was high (a trip, a one-off purchase), what changed, what to watch. ` +
+        "Refresh it after adding charges when something notable changed. The totals, biggest expense, highest day, categories and the comparison with last " +
+        "month are computed by the app (see get_month_summary's story), so do not repeat those. An empty note clears it. Overwrites the previous note.",
+      inputSchema: { month, note: z.string().max(MONTH_NOTE_MAX) },
     },
     handler((db, a) => setMonthNote(db, a)),
   );

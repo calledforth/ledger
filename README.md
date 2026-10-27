@@ -32,6 +32,36 @@ The month arrows go back through history and forward into future months, where t
 Vendor logos come from [Simple Icons](https://simpleicons.org) (Wise, Upwork, Netflix, Spotify, Anthropic, …); vendors
 without one get a lettered badge.
 
+### The month in words
+
+`src/domain/narrative.ts` turns a month summary into sentences ("You received ₹2,41,500 from Wise over NEFT, and
+moved ₹50,000 to HDFC Securities…"), plus the biggest expense, the highest day, a straight-line projection for the
+current month and a comparison with last month. It is pure arithmetic over `getMonthSummary`, so it is always
+current and never waits on the assistant. `GET /api/month` returns it as `story` (text as segments with a tone, so
+the apps can colour the numbers); `get_month_summary` returns the same under `story`. The assistant's own
+observations go in the month note (`set_month_note`, a few newline-separated lines, max 1000 characters) and are
+shown next to it; the tool description tells the assistant not to repeat what the story already says.
+
+## The mobile app
+
+`mobile/` is an Expo (React Native) app for the same data: one month per screen, swipe sideways for other months,
+pull down for every charge, tap a day. See [mobile/README.md](mobile/README.md). The web app is untouched apart
+from the JSON API below.
+
+## JSON API (used by the mobile app)
+
+The dashboard's session JWT is accepted as the cookie or as `Authorization: Bearer <token>` on `/api/*`
+(`src/lib/api-auth.ts`); unauthenticated `/api` calls get a 401 JSON body instead of a login redirect.
+
+| Route | What |
+| --- | --- |
+| `POST /api/login` `{ password }` | `{ token, expires_in }`, the same session JWT the cookie carries |
+| `GET /api/month?m=YYYY-MM` | Everything the dashboard shows for a month, plus `story` and `by_category` |
+| `PATCH /api/charges/:id` | `{ vendor?, category?, notes?, reviewed?, save_alias?, refunded? }`, the row sheet's edits |
+| `PATCH /api/subscriptions/:id` | `{ action: "cancel", cancelled_on?, ended_at? }` or `{ action: "set_end", ended_at }` |
+
+The row edits live in `src/domain/owner.ts` and are shared by the server actions and these routes.
+
 ## Business rules (where they live)
 
 All rules are in `src/domain/*`. The MCP tools (`src/mcp/server.ts`), server actions (`app/actions.ts`) and scripts are
@@ -62,7 +92,8 @@ thin wrappers.
 - `upcoming_events` table (used): one-off expected payments and mandate pre-debit notices. `source_message_id` is
   unique, so notices are idempotent. A pending event within ±3 days of a projected subscription charge replaces that
   projection so nothing is counted twice; a matching debit marks it `paid`.
-- `month_notes`: one short note per month written by the assistant (`set_month_note`) and shown above the charts.
+- `month_notes`: the assistant's observations for a month (`set_month_note`), a few newline-separated lines, shown
+  above the charts and under the mobile summary.
 
 ## MCP server
 
