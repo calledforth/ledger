@@ -1,5 +1,6 @@
+import { useRef } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import Swipeable from "react-native-gesture-handler/Swipeable";
+import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import * as Haptics from "expo-haptics";
 import { api } from "../api";
 import { refreshAll } from "../store";
@@ -11,6 +12,7 @@ import { Badge } from "./Badge";
  * One charge. Swipe left to mark it refunded (with a confirm), press to open it, long-press to edit.
  */
 export function ChargeRow({ row, onPress, onEdit }: { row: Row; onPress?: (row: Row) => void; onEdit?: (row: Row) => void }) {
+  const swipe = useRef<SwipeableMethods>(null);
   const isTransfer = !!row.category?.toLowerCase().startsWith("transfer:");
   const amountColor = row.is_refunded ? colors.faint : row.needs_review ? colors.reviewText : row.direction === "credit" ? colors.green : isTransfer ? colors.blue : colors.text;
   const subtitle = [row.subscription ?? categoryLabel(row.category), row.needs_review ? (row.review_reason === "possible_duplicate" ? "possible duplicate" : row.review_reason === "unknown_vendor" ? "unknown vendor · hold to name" : "needs a look") : row.channel, row.time_label]
@@ -54,11 +56,12 @@ export function ChargeRow({ row, onPress, onEdit }: { row: Row; onPress?: (row: 
   if (row.direction !== "debit" || row.is_refunded) return body;
   return (
     <Swipeable
+      ref={swipe}
       friction={2}
       rightThreshold={64}
       overshootRight={false}
-      onSwipeableOpen={(dir: "left" | "right", s: { close: () => void }) => {
-        s.close();
+      onSwipeableOpen={(dir) => {
+        swipe.current?.close();
         if (dir === "right") refund();
       }}
       renderRightActions={() => (
