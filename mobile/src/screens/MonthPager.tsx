@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FlatList, useWindowDimensions, type ViewToken } from "react-native";
+import { FlatList, useWindowDimensions } from "react-native";
 import { shiftMonth } from "../format";
 import { prefetchAround } from "../store";
 import { MonthScreen } from "./MonthScreen";
@@ -12,7 +12,7 @@ export function MonthPager({ current, onSignOut }: { current: string; onSignOut:
   const months = useMemo(() => Array.from({ length: MONTHS_BACK + 2 }, (_, i) => shiftMonth(current, i - MONTHS_BACK)), [current]);
   const [visible, setVisible] = useState(current);
   const viewability = useRef({ itemVisiblePercentThreshold: 60 });
-  const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken<string>[] }) => {
+  const onViewable = useRef(({ viewableItems }: { viewableItems: { item: string }[] }) => {
     const m = viewableItems[0]?.item;
     if (m) {
       setVisible(m);
